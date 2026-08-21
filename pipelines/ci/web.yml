@@ -1,0 +1,42 @@
+trigger:
+  branches:
+    include:
+      - develop
+      - main
+
+pr:
+  branches:
+    include:
+      - develop
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  nodeVersion: '24.x'
+
+steps:
+  - task: UseNode@1
+    displayName: 'Use Node.js $(nodeVersion)'
+    inputs:
+      version: '$(nodeVersion)'
+
+  - script: npm ci
+    displayName: 'Install repository dependencies'
+
+  - script: npm ci
+    displayName: 'Install web dependencies'
+    workingDirectory: 'src/web'
+
+  - script: npm run lint
+    displayName: 'Run ESLint'
+    workingDirectory: 'src/web'
+
+  - script: npm run typecheck
+    displayName: 'Run TypeScript checks'
+    workingDirectory: 'src/web'
+
+  - script: npm run build
+    displayName: 'Build web application'
+    workingDirectory: 'src/web'
