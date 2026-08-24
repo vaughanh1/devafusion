@@ -72,6 +72,7 @@ crash.*.log
 
 *.tfvars
 *.tfvars.json
+!infrastructure/app/environments/dev/dev.tfvars
 
 # Terraform lock file SHOULD be committed
 # .terraform.lock.hcl
