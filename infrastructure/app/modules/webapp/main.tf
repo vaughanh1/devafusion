@@ -20,6 +20,8 @@ resource "azurerm_linux_web_app" "this" {
   site_config {
     always_on = false
 
+    use_32_bit_worker = false
+
     application_stack {
       node_version = var.node_version
     }
