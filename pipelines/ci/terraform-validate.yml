@@ -1,0 +1,107 @@
+trigger: none
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
+  terraformPlanFile: "tfplan"
+
+stages:
+  # ============================================================
+  # PLAN
+  # ============================================================
+  - stage: Plan
+    displayName: Terraform Plan
+
+    jobs:
+      - job: TerraformPlan
+        displayName: Terraform init, validate and plan
+
+        steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: latest
+
+          - task: AzureCLI@2
+            displayName: Terraform init, validate and plan
+            inputs:
+              azureSubscription: sc-devafusion-terraform
+              scriptType: bash
+              scriptLocation: inlineScript
+              addSpnToEnvironment: true
+              inlineScript: |
+                set -euo pipefail
+
+                cd "$(terraformWorkingDirectory)"
+
+                terraform init -input=false
+                terraform validate
+
+                terraform plan \
+                  -input=false \
+                  -var-file=dev.tfvars \
+                  -out="$(terraformPlanFile)"
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Terraform plan
+            inputs:
+              targetPath: "$(terraformWorkingDirectory)/$(terraformPlanFile)"
+              artifact: terraform-plan
+              publishLocation: pipeline
+
+  # ============================================================
+  # APPLY
+  #
+  # The environment approval/check is configured in Azure DevOps
+  # on the "devafusion-dev" environment.
+  # ============================================================
+  - stage: Apply
+    displayName: Terraform Apply
+    dependsOn: Plan
+    condition: succeeded()
+
+    jobs:
+      - deployment: TerraformApply
+        displayName: Apply approved Terraform plan
+        environment: devafusion-dev
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  displayName: Install Terraform
+                  inputs:
+                    terraformVersion: latest
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download Terraform plan
+                  inputs:
+                    artifact: terraform-plan
+                    path: "$(Pipeline.Workspace)/terraform-plan"
+
+                - task: AzureCLI@2
+                  displayName: Terraform apply
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      set -euo pipefail
+
+                      cd "$(terraformWorkingDirectory)"
+
+                      terraform init -input=false
+
+                      terraform apply \
+                        -input=false \
+                        "$(Pipeline.Workspace)/terraform-plan/$(terraformPlanFile)"

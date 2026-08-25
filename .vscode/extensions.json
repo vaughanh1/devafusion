@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "hashicorp.terraform",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "redhat.vscode-yaml",
+    "github.vscode-pull-request-github",
+    "ms-azuretools.vscode-azureappservice"
+  ]
+}
