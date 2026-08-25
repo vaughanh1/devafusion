@@ -11,6 +11,11 @@ terraform {
       source  = "hashicorp/dns"
       version = "~> 3.4"
     }
+
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.0"
+    }
   }
 }
 
@@ -21,3 +26,5 @@ provider "azurerm" {
 
   resource_provider_registrations = "none"
 }
+
+provider "azapi" {}
