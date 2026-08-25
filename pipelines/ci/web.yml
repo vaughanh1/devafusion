@@ -8,35 +8,97 @@ pr:
   branches:
     include:
       - develop
-      - main
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
-  nodeVersion: '24.x'
+  webWorkingDirectory: "$(Build.SourcesDirectory)/src/web"
+  webArtifactDirectory: "$(Build.ArtifactStagingDirectory)/web"
+  webAppName: "devafusion-dev"
 
-steps:
-  - task: UseNode@1
-    displayName: 'Use Node.js $(nodeVersion)'
-    inputs:
-      version: '$(nodeVersion)'
+stages:
+  # ============================================================
+  # BUILD
+  # ============================================================
+  - stage: Build
+    displayName: Build web application
 
-  - script: npm ci
-    displayName: 'Install repository dependencies'
+    jobs:
+      - job: BuildWeb
+        displayName: Build and package Next.js
 
-  - script: npm ci
-    displayName: 'Install web dependencies'
-    workingDirectory: 'src/web'
+        steps:
+          - checkout: self
 
-  - script: npm run lint
-    displayName: 'Run ESLint'
-    workingDirectory: 'src/web'
+          - task: NodeTool@0
+            displayName: Install Node.js 24
+            inputs:
+              versionSpec: "24.x"
 
-  - script: npm run typecheck
-    displayName: 'Run TypeScript checks'
-    workingDirectory: 'src/web'
+          - script: |
+              set -euo pipefail
 
-  - script: npm run build
-    displayName: 'Build web application'
-    workingDirectory: 'src/web'
+              cd "$(webWorkingDirectory)"
+
+              npm ci
+              npm run lint
+              npm run typecheck
+              npm run build
+
+              # Next.js standalone output does not include static assets
+              # and public assets automatically.
+              cp -R .next/static .next/standalone/.next/static
+
+              if [ -d public ]; then
+                cp -R public .next/standalone/public
+              fi
+
+              # Assemble the final deployment artifact.
+              rm -rf "$(webArtifactDirectory)"
+              mkdir -p "$(webArtifactDirectory)"
+
+              cp -R .next/standalone/. "$(webArtifactDirectory)/"
+            displayName: Build and package application
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish web application
+            inputs:
+              targetPath: "$(webArtifactDirectory)"
+              artifact: web-application
+              publishLocation: pipeline
+
+  # ============================================================
+  # DEPLOY
+  #
+  # The devafusion-dev environment provides the approval gate.
+  # ============================================================
+  - stage: Deploy
+    displayName: Deploy web application
+    dependsOn: Build
+    condition: succeeded()
+
+    jobs:
+      - deployment: DeployWeb
+        displayName: Deploy approved web application
+        environment: devafusion-dev
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: none
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download web application
+                  inputs:
+                    artifact: web-application
+                    path: "$(Pipeline.Workspace)/web-application"
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to Azure App Service
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    appType: webAppLinux
+                    appName: "$(webAppName)"
+                    package: "$(Pipeline.Workspace)/web-application"
