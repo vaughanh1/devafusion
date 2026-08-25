@@ -13,3 +13,9 @@ output "web_app_name" {
 output "default_hostname" {
   value = azurerm_linux_web_app.this.default_hostname
 }
+
+output "custom_domain_verification_id" {
+  description = "App Service custom domain verification ID."
+  value       = azurerm_linux_web_app.this.custom_domain_verification_id
+  sensitive   = true
+}
