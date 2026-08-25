@@ -1,0 +1,183 @@
+trigger: none
+pr: none
+
+resources:
+  pipelines:
+    - pipeline: webCI
+      source: devafusion-web-ci
+      trigger:
+        branches:
+          include:
+            - develop
+
+    - pipeline: terraformCI
+      source: devafusion-terraform-ci
+      trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
+  terraformPlanFile: "tfplan"
+  webAppName: "devafusion-dev"
+
+stages:
+  # ============================================================
+  # VERIFY ARTIFACTS
+  # ============================================================
+  - stage: Verify
+    displayName: Verify CI artifacts
+
+    jobs:
+      - job: VerifyArtifacts
+        displayName: Verify matching source commits
+
+        steps:
+          - checkout: none
+
+          - script: |
+              set -euo pipefail
+
+              echo "Web CI commit:"
+              echo "$(resources.pipeline.webCI.sourceCommit)"
+
+              echo "Terraform CI commit:"
+              echo "$(resources.pipeline.terraformCI.sourceCommit)"
+
+              if [ "$(resources.pipeline.webCI.sourceCommit)" != "$(resources.pipeline.terraformCI.sourceCommit)" ]; then
+                echo "ERROR: Web and Terraform artifacts are from different commits."
+                exit 1
+              fi
+
+              echo "Web and Terraform artifacts match."
+            displayName: Verify artifact versions
+
+  # ============================================================
+  # TERRAFORM
+  # ============================================================
+  - stage: Terraform
+    displayName: Apply Terraform
+    dependsOn: Verify
+    condition: succeeded()
+
+    jobs:
+      - deployment: TerraformApply
+        displayName: Apply approved Terraform plan
+        environment: devafusion-dev
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  displayName: Install Terraform
+                  inputs:
+                    terraformVersion: latest
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download Terraform plan
+                  inputs:
+                    buildType: specific
+                    project: "$(System.TeamProject)"
+                    definition: "$(resources.pipeline.terraformCI.pipelineID)"
+                    buildVersionToDownload: specific
+                    pipelineId: "$(resources.pipeline.terraformCI.runID)"
+                    artifactName: terraform-plan
+                    targetPath: "$(Pipeline.Workspace)/terraform-plan"
+
+                - task: AzureCLI@2
+                  displayName: Terraform apply
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      set -euo pipefail
+
+                      cd "$(terraformWorkingDirectory)"
+
+                      terraform init -input=false
+
+                      terraform apply \
+                        -input=false \
+                        "$(Pipeline.Workspace)/terraform-plan/$(terraformPlanFile)"
+
+  # ============================================================
+  # WEB DEPLOYMENT
+  # ============================================================
+  - stage: Web
+    displayName: Deploy web application
+    dependsOn: Terraform
+    condition: succeeded()
+
+    jobs:
+      - deployment: DeployWeb
+        displayName: Deploy approved web application
+        environment: devafusion-dev
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: none
+
+                - task: DownloadPipelineArtifact@2
+                  displayName: Download web application
+                  inputs:
+                    buildType: specific
+                    project: "$(System.TeamProject)"
+                    definition: "$(resources.pipeline.webCI.pipelineID)"
+                    buildVersionToDownload: specific
+                    pipelineId: "$(resources.pipeline.webCI.runID)"
+                    artifactName: web-application
+                    targetPath: "$(Pipeline.Workspace)/web-application"
+
+                - task: AzureWebApp@1
+                  displayName: Deploy to Azure App Service
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    appType: webAppLinux
+                    appName: "$(webAppName)"
+                    package: "$(Pipeline.Workspace)/web-application"
+
+  # ============================================================
+  # SMOKE TEST
+  # ============================================================
+  - stage: SmokeTest
+    displayName: Smoke test
+    dependsOn: Web
+    condition: succeeded()
+
+    jobs:
+      - job: SmokeTest
+        displayName: Verify application is responding
+
+        steps:
+          - checkout: none
+
+          - script: |
+              set -euo pipefail
+
+              url="https://$(webAppName).azurewebsites.net"
+
+              echo "Testing $url"
+
+              for attempt in {1..12}; do
+                if curl --fail --silent --show-error \
+                  --max-time 10 \
+                  "$url" > /dev/null; then
+                  echo "Application is responding."
+                  exit 0
+                fi
+
+                echo "Application not ready. Attempt $attempt/12."
+                sleep 10
+              done
+
+              echo "Application failed smoke test."
+              exit 1
+            displayName: HTTP smoke test

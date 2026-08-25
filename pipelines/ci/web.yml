@@ -15,12 +15,8 @@ pool:
 variables:
   webWorkingDirectory: "$(Build.SourcesDirectory)/src/web"
   webArtifactDirectory: "$(Build.ArtifactStagingDirectory)/web"
-  webAppName: "devafusion-dev"
 
 stages:
-  # ============================================================
-  # BUILD
-  # ============================================================
   - stage: Build
     displayName: Build web application
 
@@ -46,15 +42,14 @@ stages:
               npm run typecheck
               npm run build
 
-              # Next.js standalone output does not include static assets
-              # and public assets automatically.
+              # Standalone output does not include these automatically.
               cp -R .next/static .next/standalone/.next/static
 
               if [ -d public ]; then
                 cp -R public .next/standalone/public
               fi
 
-              # Assemble the final deployment artifact.
+              # Package exactly what Azure App Service needs.
               rm -rf "$(webArtifactDirectory)"
               mkdir -p "$(webArtifactDirectory)"
 
@@ -67,38 +62,3 @@ stages:
               targetPath: "$(webArtifactDirectory)"
               artifact: web-application
               publishLocation: pipeline
-
-  # ============================================================
-  # DEPLOY
-  #
-  # The devafusion-dev environment provides the approval gate.
-  # ============================================================
-  - stage: Deploy
-    displayName: Deploy web application
-    dependsOn: Build
-    condition: succeeded()
-
-    jobs:
-      - deployment: DeployWeb
-        displayName: Deploy approved web application
-        environment: devafusion-dev
-
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: none
-
-                - task: DownloadPipelineArtifact@2
-                  displayName: Download web application
-                  inputs:
-                    artifact: web-application
-                    path: "$(Pipeline.Workspace)/web-application"
-
-                - task: AzureWebApp@1
-                  displayName: Deploy to Azure App Service
-                  inputs:
-                    azureSubscription: sc-devafusion-terraform
-                    appType: webAppLinux
-                    appName: "$(webAppName)"
-                    package: "$(Pipeline.Workspace)/web-application"
