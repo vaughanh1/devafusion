@@ -55,13 +55,17 @@ resource "azurerm_dns_txt_record" "devafusion_net_asuid" {
   }
 }
 
+data "dns_a_record_set" "webapp" {
+  host = module.webapp.default_hostname
+}
+
 resource "azurerm_dns_a_record" "devafusion_com" {
   name                = "@"
   zone_name           = azurerm_dns_zone.devafusion_com.name
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = 300
 
-  target_resource_id = module.webapp.web_app_id
+  records = [data.dns_a_record_set.webapp.addrs[0]]
 }
 
 resource "azurerm_dns_a_record" "devafusion_net" {
@@ -70,5 +74,5 @@ resource "azurerm_dns_a_record" "devafusion_net" {
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = 300
 
-  target_resource_id = module.webapp.web_app_id
+  records = [data.dns_a_record_set.webapp.addrs[0]]
 }
