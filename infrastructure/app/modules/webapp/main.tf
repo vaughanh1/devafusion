@@ -26,7 +26,7 @@ resource "azurerm_linux_web_app" "this" {
       node_version = var.node_version
     }
 
-    app_command_line = "node .next/standalone/server.js"
+    app_command_line = "node server.js"
   }
 
   tags = var.tags
