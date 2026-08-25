@@ -3,11 +3,19 @@ trigger:
     include:
       - develop
       - main
+  paths:
+    include:
+      - infrastructure/**
+      - pipelines/ci/terraform.yml
 
 pr:
   branches:
     include:
       - develop
+  paths:
+    include:
+      - infrastructure/**
+      - pipelines/ci/terraform.yml
 
 pool:
   vmImage: ubuntu-latest

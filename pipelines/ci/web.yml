@@ -3,11 +3,19 @@ trigger:
     include:
       - develop
       - main
+  paths:
+    include:
+      - src/web/**
+      - pipelines/ci/web.yml
 
 pr:
   branches:
     include:
       - develop
+  paths:
+    include:
+      - src/web/**
+      - pipelines/ci/web.yml
 
 pool:
   vmImage: ubuntu-latest
