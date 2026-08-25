@@ -1,115 +1,37 @@
 trigger: none
+
 pr: none
 
 pool:
   vmImage: ubuntu-latest
+
+resources:
+  pipelines:
+    - pipeline: terraform
+      source: devafusion-terraform-ci
+      trigger: none
+
+    - pipeline: web
+      source: devafusion-web-ci
+      trigger: none
 
 variables:
   terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
   webAppName: "devafusion-dev"
 
 stages:
-  # ============================================================
-  # GET LATEST CI ARTIFACTS
-  # ============================================================
-  - stage: Prepare
-    displayName: Prepare deployment
-
-    jobs:
-      - job: Prepare
-        displayName: Get latest successful CI artifacts
-
-        steps:
-          - checkout: self
-
-          - task: AzureCLI@2
-            displayName: Get latest CI runs
-            inputs:
-              azureSubscription: sc-devafusion-terraform
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                set -euo pipefail
-
-                organization="$(System.CollectionUri)"
-                project="$(System.TeamProject)"
-
-                echo "Finding latest successful Terraform CI run..."
-                terraformRunId=$(
-                  az pipelines runs list \
-                    --organization "$organization" \
-                    --project "$project" \
-                    --pipeline-name "devafusion-terraform-ci" \
-                    --status completed \
-                    --result succeeded \
-                    --top 1 \
-                    --query "[0].id" \
-                    --output tsv
-                )
-
-                echo "Finding latest successful Web CI run..."
-                webRunId=$(
-                  az pipelines runs list \
-                    --organization "$organization" \
-                    --project "$project" \
-                    --pipeline-name "devafusion-web-ci" \
-                    --status completed \
-                    --result succeeded \
-                    --top 1 \
-                    --query "[0].id" \
-                    --output tsv
-                )
-
-                if [ -z "$terraformRunId" ]; then
-                  echo "No successful Terraform CI run found."
-                  exit 1
-                fi
-
-                if [ -z "$webRunId" ]; then
-                  echo "No successful Web CI run found."
-                  exit 1
-                fi
-
-                echo "Terraform CI run: $terraformRunId"
-                echo "Web CI run: $webRunId"
-
-                echo "##vso[task.setvariable variable=terraformRunId;isOutput=true]$terraformRunId"
-                echo "##vso[task.setvariable variable=webRunId;isOutput=true]$webRunId"
-            name: versions
-
-          - task: DownloadPipelineArtifact@2
-            displayName: Download Terraform plan
-            inputs:
-              buildType: specific
-              project: "$(System.TeamProject)"
-              definition: "devafusion-terraform-ci"
-              buildVersionToDownload: specific
-              pipelineId: "$(versions.terraformRunId)"
-              artifactName: terraform-plan
-              targetPath: "$(Pipeline.Workspace)/terraform-plan"
-
-          - task: DownloadPipelineArtifact@2
-            displayName: Download web application
-            inputs:
-              buildType: specific
-              project: "$(System.TeamProject)"
-              definition: "devafusion-web-ci"
-              buildVersionToDownload: specific
-              pipelineId: "$(versions.webRunId)"
-              artifactName: web-application
-              targetPath: "$(Pipeline.Workspace)/web-application"
 
   # ============================================================
   # TERRAFORM
+  #
+  # The devafusion-dev environment provides the approval gate.
   # ============================================================
   - stage: Terraform
-    displayName: Apply Terraform
-    dependsOn: Prepare
-    condition: succeeded()
+    displayName: Terraform
 
     jobs:
       - deployment: TerraformApply
-        displayName: Apply Terraform plan
+        displayName: Apply Terraform
         environment: devafusion-dev
 
         strategy:
@@ -123,12 +45,16 @@ stages:
                   inputs:
                     terraformVersion: latest
 
+                - download: terraform
+                  artifact: terraform-plan
+
                 - task: AzureCLI@2
                   displayName: Terraform apply
                   inputs:
                     azureSubscription: sc-devafusion-terraform
                     scriptType: bash
                     scriptLocation: inlineScript
+                    addSpnToEnvironment: true
                     inlineScript: |
                       set -euo pipefail
 
@@ -138,10 +64,12 @@ stages:
 
                       terraform apply \
                         -input=false \
-                        "$(Pipeline.Workspace)/terraform-plan/tfplan"
+                        "$(Pipeline.Workspace)/terraform/terraform-plan/tfplan"
 
   # ============================================================
   # WEB
+  #
+  # Runs only after Terraform has completed successfully.
   # ============================================================
   - stage: Web
     displayName: Deploy web application
@@ -159,50 +87,14 @@ stages:
               steps:
                 - checkout: none
 
+                - download: web
+                  artifact: web-application
+
                 - task: AzureWebApp@1
-                  displayName: Deploy web application
+                  displayName: Deploy to Azure App Service
                   inputs:
                     azureSubscription: sc-devafusion-terraform
                     appType: webAppLinux
                     appName: "$(webAppName)"
-                    package: "$(Pipeline.Workspace)/web-application"
-
-  # ============================================================
-  # SMOKE TEST
-  # ============================================================
-  - stage: SmokeTest
-    displayName: Smoke test
-    dependsOn: Web
-    condition: succeeded()
-
-    jobs:
-      - job: SmokeTest
-        displayName: Verify application
-
-        steps:
-          - script: |
-              set -euo pipefail
-
-              url="https://$(webAppName).azurewebsites.net"
-
-              echo "Testing $url"
-
-              for attempt in {1..12}; do
-                if curl \
-                  --fail \
-                  --silent \
-                  --show-error \
-                  --max-time 10 \
-                  "$url" > /dev/null; then
-
-                  echo "Application is responding."
-                  exit 0
-                fi
-
-                echo "Application not ready. Attempt $attempt/12."
-                sleep 10
-              done
-
-              echo "Application failed smoke test."
-              exit 1
-            displayName: HTTP smoke test
+                    package: "$(Pipeline.Workspace)/web/web-application"
+```
