@@ -31,10 +31,10 @@ stages:
         steps:
           - checkout: self
 
-          - task: NodeTool@0
+          - task: UseNode@1
             displayName: Install Node.js 24
             inputs:
-              versionSpec: "24.x"
+              version: "24.x"
 
           - script: |
               set -euo pipefail
