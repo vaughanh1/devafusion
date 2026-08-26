@@ -17,12 +17,36 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://devafusion.com",
+  ),
   title: {
     default: "Devafusion",
     template: "%s | Devafusion",
   },
   description:
     "A technical laboratory exploring software engineering, cloud architecture and modern web development.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Devafusion",
+    title: "Devafusion",
+    description:
+      "A technical laboratory exploring software engineering, cloud architecture and modern web development.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: "Devafusion",
+    description:
+      "A technical laboratory exploring software engineering, cloud architecture and modern web development.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
