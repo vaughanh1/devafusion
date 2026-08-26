@@ -1,12 +1,24 @@
+import type { Metadata } from "next";
+
 interface ProjectPageProps {
   params: Promise<{
     slug: string;
   }>;
 }
 
-export default async function ProjectPage({
+export async function generateMetadata({
   params,
-}: ProjectPageProps) {
+}: ProjectPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const title = slug.replaceAll("-", " ");
+
+  return {
+    title,
+    description: `Explore the ${title} project from Devafusion.`,
+  };
+}
+
+export default async function ProjectPage({ params }: ProjectPageProps) {
   const { slug } = await params;
 
   return (

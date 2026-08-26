@@ -1,12 +1,24 @@
+import type { Metadata } from "next";
+
 interface ExperimentPageProps {
   params: Promise<{
     slug: string;
   }>;
 }
 
-export default async function ExperimentPage({
+export async function generateMetadata({
   params,
-}: ExperimentPageProps) {
+}: ExperimentPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const title = slug.replaceAll("-", " ");
+
+  return {
+    title,
+    description: `Read about the ${title} experiment from Devafusion.`,
+  };
+}
+
+export default async function ExperimentPage({ params }: ExperimentPageProps) {
   const { slug } = await params;
 
   return (
