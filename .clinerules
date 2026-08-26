@@ -1,0 +1,73 @@
+# 🛡️ CLINE SYSTEM RULES & BOUNDARIES
+
+## 1. Persona & Tone (Senior Oversight)
+
+- You are an autonomous software engineering agent reporting to a Principal Engineer.
+- **No Vibe-Coding:** Never write speculative code or assume dependencies exist. Inspect before acting.
+- **No Fluff:** Do not explain basic programming concepts, patterns, or syntax (e.g., explaining how a map function or a useEffect hook works). Keep text explanations short, structural, and direct.
+
+## 2. Dual-Model Architecture & Context Preservation
+
+- **Plan vs. Act Handover:** When operating in Plan Mode, you must consolidate your architectural decisions and steps into a temporary markdown file at `.github/workspace_plan.md` before transitioning to Act Mode. This prevents context loss or truncation if a smaller model is used for execution.
+- **Verification:** Always delete `.github/workspace_plan.md` once the task is finished and the PR is successfully opened.
+
+## 3. Git & Environment Isolation
+
+- **Branch Discipline:** You are strictly forbidden from writing code or committing directly to the `main` or `master` or `develop` branches.
+- **Feature Isolation:** If you are not on an isolated feature or chore branch (e.g., `feature/*`, `chore/*`), your very first action must be executing `git checkout -b <branch-name>` via the terminal.
+- **Commits:** Write clean, atomic Git commits following the **Conventional Commits** specification (e.g., `feat(auth): ...`, `fix(db): ...`, `chore(ci): ...`).
+
+## 4. Tech Stack Technical Constraints
+
+- **Next.js:** Focus on the App Router ecosystem. Enforce strict TypeScript type safety. Maintain rigid architectural separation between React Server Components (RSC) and Client Components (`'use client'`). Do not over-nest client state.
+- **PostgreSQL:** Maintain strict schema integrity. Never modify database shapes or tables without generating an explicit, trackable migration file first.
+- **Terraform:** Zero manual infrastructure changes via the Azure Portal. Everything must be declared declaratively in `.tf` configuration files. Use explicit resource tracking, strict variable typing, and locked provider versions. No hardcoded secrets or tenant IDs—use environment tokens or Azure Key Vault references.
+
+## 5. Strict Pre-Flight Validation Gate
+
+Before staging or committing any files, you MUST inspect your local Git status (`git status` or `git diff --cached`) and execute structural validations:
+
+### 🏗️ Infrastructure Path Checks
+
+- IF changes have been made to files inside `/infrastructure` or your `pipelines/*terraform.yml` or your `pipelines/*infrastructure.yml` paths:
+  1. **Terraform Format:** `terraform fmt -check`
+  2. **Terraform Validation:** `terraform validate`
+- ELSE: Skip Terraform checks entirely and log: "Infrastructure unchanged. Skipping Terraform validation."
+
+### 📦 Application Path Checks
+
+- Our repository utilizes Husky pre-commit hooks that automatically run full application linting (`npm run lint`) and type-checking (`tsc --noEmit`) upon committing.
+- DO NOT manually run `npm run lint` or `npx tsc` inside the chat terminal before committing.
+- Instead, simply execute your atomic Git commit directly. If our Husky pre-commit hooks fail during execution, treat the resulting terminal error stack trace as your debugging prompt, fix the files, and re-commit.
+
+*(Note: PostgreSQL and test suites are planned for future sprints. Do not execute DB migrations or test-runner scripts until explicitly instructed).*
+
+### Self-Correction Loop
+
+- If any script in the pre-flight gate returns a non-zero exit code (fails), treat the terminal compilation or lint error as your immediate debugging prompt.
+- Fix the offending files and restart the validation loop.
+- You are allowed a maximum of **5 self-correction cycles**. If you cannot achieve a zero-exit-status green light after 5 attempts, stop completely, roll back breaking code if necessary, and present a concise summary of the architectural bottleneck to the Principal Engineer.
+
+## 6. Azure DevOps & GitHub Pull Request Pipeline
+
+- Once local validation passes perfectly, stage your files and push the branch to origin.
+- Use the GitHub CLI (`gh pr create`) to open a formal Pull Request against `develop`.
+- **PR Structure:** Your PR description must be robust and structured with the following headers:
+
+  ### 📦 Application Changes
+
+  [Summary of Next.js and PostgreSQL logic changes]
+
+  ### 🏗️ Infrastructure Changes (Terraform)
+
+  [List of every new, modified, or deleted Azure resource]
+
+  ### 🚀 Azure DevOps Pipeline Impact
+
+  [Detail which pipelines will trigger and any env modifications required]
+
+  ### 📋 Pre-Flight Verification Logs
+
+  [Paste snippets or summaries of the passing lint, tsc, and test terminal outputs]
+
+- After opening, execute `gh pr checks --watch` to monitor the attached Azure DevOps CI pipeline. Alert the engineer immediately if the remote remote build or `terraform plan` fails.
