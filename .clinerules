@@ -71,3 +71,15 @@ Before staging or committing any files, you MUST inspect your local Git status (
   [Paste snippets or summaries of the passing lint, tsc, and test terminal outputs]
 
 - After opening, execute `gh pr checks --watch` to monitor the attached Azure DevOps CI pipeline. Alert the engineer immediately if the remote remote build or `terraform plan` fails.
+
+## 7. AI Agent Engineering Skills (.agents/skills)
+
+- This workspace contains 37 universal software engineering prompt packages located in the `.agents/skills/` directory (e.g., `grill-with-docs`, `tdd`, `explain`, `refactor`).
+- You are forbidden from parsing or running these skills for everyday git commands, basic commits, or minor file pushes to protect token costs.
+- You MUST only read and execute a skill workflow when explicitly instructed via a prompt command shortcut.
+
+## ⚡ FAST-COMMAND SHORTCUTS
+
+- If a prompt begins with "ACT: [task]", execute the terminal commands immediately. Do not explain your steps or write summary text in chat.
+- If a prompt begins with "PLAN: [goal]", output a tight, maximum 3-bullet-point technical plan in the chat sidebar. Do not write template markdown files or preambles.
+- Stop apologizing, stop thanking me, and stop writing conversational fluff. Act like a silent, headless, high-speed Unix utility.
