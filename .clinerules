@@ -36,8 +36,8 @@ Before staging or committing any files, you MUST inspect your local Git status (
 
 ### 📦 Application Path Checks
 
-- Our repository utilizes Husky pre-commit hooks that automatically run full application linting (`npm run lint`) and type-checking (`tsc --noEmit`) upon committing.
-- DO NOT manually run `npm run lint` or `npx tsc` inside the chat terminal before committing.
+- Our repository utilizes Husky pre-commit hooks that automatically run full application linting (`npm run lint`) and type-checking (`npm run typecheck`) upon committing.
+- DO NOT manually run `npm run lint` or `npm run typecheck` inside the chat terminal before committing.
 - Instead, simply execute your atomic Git commit directly. If our Husky pre-commit hooks fail during execution, treat the resulting terminal error stack trace as your debugging prompt, fix the files, and re-commit.
 
 *(Note: PostgreSQL and test suites are planned for future sprints. Do not execute DB migrations or test-runner scripts until explicitly instructed).*
