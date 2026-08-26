@@ -98,3 +98,12 @@ test-results/
 *.tmp
 *.temp
 *.log
+
+# ============================================================
+# AI Agents & Engineering Toolkits (Cline / Roo Code)
+# ============================================================
+
+.agents/
+.github/skills/
+.history/
+.github/workspace_plan.md
