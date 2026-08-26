@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+
+import { getProject, projects } from "@/features/projects/projects";
 
 interface ProjectPageProps {
   params: Promise<{
@@ -6,20 +9,33 @@ interface ProjectPageProps {
   }>;
 }
 
+export function generateStaticParams() {
+  return projects.map((project) => ({ slug: project.slug }));
+}
+
 export async function generateMetadata({
   params,
 }: ProjectPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const title = slug.replaceAll("-", " ");
+  const project = getProject(slug);
+
+  if (!project) {
+    return {};
+  }
 
   return {
-    title,
-    description: `Explore the ${title} project from Devafusion.`,
+    title: project.title,
+    description: project.summary,
   };
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { slug } = await params;
+  const project = getProject(slug);
+
+  if (!project) {
+    notFound();
+  }
 
   return (
     <section className="mx-auto max-w-4xl px-6 py-20">
@@ -28,12 +44,20 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       </p>
 
       <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950">
-        {slug}
+        {project.title}
       </h1>
 
       <p className="mt-6 text-lg leading-8 text-zinc-600">
-        This project does not exist yet.
+        {project.description}
       </p>
+
+      <ul className="mt-8 flex flex-wrap gap-2 text-sm text-zinc-500">
+        {project.tags.map((tag) => (
+          <li key={tag} className="border border-zinc-200 px-3 py-1">
+            {tag}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
