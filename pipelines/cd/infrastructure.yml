@@ -1,0 +1,59 @@
+trigger: none
+
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+resources:
+  pipelines:
+    - pipeline: terraform
+      source: devafusion-terraform-ci
+      trigger:
+        branches:
+          include:
+            - develop
+
+variables:
+  terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
+
+stages:
+  - stage: Terraform
+    displayName: Apply Terraform
+
+    jobs:
+      - deployment: TerraformApply
+        displayName: Apply Terraform plan
+        environment: devafusion-dev
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: TerraformInstaller@1
+                  displayName: Install Terraform
+                  inputs:
+                    terraformVersion: latest
+
+                - download: terraform
+                  artifact: terraform-plan
+
+                - task: AzureCLI@2
+                  displayName: Terraform apply
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    addSpnToEnvironment: true
+                    inlineScript: |
+                      set -euo pipefail
+
+                      cd "$(terraformWorkingDirectory)"
+
+                      terraform init -input=false
+
+                      terraform apply \
+                        -input=false \
+                        "$(Pipeline.Workspace)/terraform/terraform-plan/tfplan"
