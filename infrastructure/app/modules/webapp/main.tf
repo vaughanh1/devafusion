@@ -29,6 +29,8 @@ resource "azurerm_linux_web_app" "this" {
     app_command_line = "node server.js"
   }
 
+  app_settings = var.app_settings
+
   tags = var.tags
 }
 

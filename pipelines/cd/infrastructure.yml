@@ -57,3 +57,21 @@ stages:
                       terraform apply \
                         -input=false \
                         "$(Pipeline.Workspace)/terraform/terraform-plan/tfplan"
+
+                - task: AzureCLI@2
+                  displayName: Restart Azure App Service
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      cd "$(terraformWorkingDirectory)"
+
+                      webAppName=$(terraform output -raw web_app_name)
+                      resourceGroupName=$(terraform output -raw resource_group_name)
+
+                      az webapp restart \
+                        --name "$webAppName" \
+                        --resource-group "$resourceGroupName"

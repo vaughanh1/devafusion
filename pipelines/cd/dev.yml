@@ -16,6 +16,7 @@ resources:
 
 variables:
   webAppName: "devafusion-dev"
+  resourceGroupName: "rg-devafusion-dev-uks"
 
 stages:
   - stage: Web
@@ -42,3 +43,13 @@ stages:
                     appType: webAppLinux
                     appName: "$(webAppName)"
                     package: "$(Pipeline.Workspace)/web/web-application"
+
+                - task: AzureCLI@2
+                  displayName: Restart Azure App Service
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+                      az webapp restart --name "$(webAppName)" --resource-group "$(resourceGroupName)"

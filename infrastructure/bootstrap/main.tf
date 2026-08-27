@@ -21,17 +21,21 @@ provider "azurerm" {
   features {}
 }
 
-resource "azurerm_resource_group" "tfstate" {
-  name     = var.resource_group_name
-  location = var.location
-
-  tags = {
+locals {
+  common_tags = {
     Product     = "Devafusion"
     Environment = "shared"
     Owner       = "Devafusion"
     CostCentre  = "Devafusion"
     Purpose     = "Terraform State"
   }
+}
+
+resource "azurerm_resource_group" "tfstate" {
+  name     = var.resource_group_name
+  location = var.location
+
+  tags = local.common_tags
 }
 
 resource "azurerm_storage_account" "tfstate" {
@@ -48,7 +52,7 @@ resource "azurerm_storage_account" "tfstate" {
 
   allow_nested_items_to_be_public = false
   shared_access_key_enabled       = true
-  public_network_access_enabled  = true
+  public_network_access_enabled   = true
   default_to_oauth_authentication = true
 
   blob_properties {
@@ -63,13 +67,7 @@ resource "azurerm_storage_account" "tfstate" {
     }
   }
 
-  tags = {
-    Product     = "Devafusion"
-    Environment = "shared"
-    Owner       = "Devafusion"
-    CostCentre  = "Devafusion"
-    Purpose     = "Terraform State"
-  }
+  tags = local.common_tags
 }
 
 resource "azurerm_storage_container" "tfstate" {

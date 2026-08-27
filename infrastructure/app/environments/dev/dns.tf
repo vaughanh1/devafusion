@@ -1,12 +1,12 @@
 resource "azurerm_dns_zone" "devafusion_com" {
-  name                = "devafusion.com"
+  name                = local.primary_domain
   resource_group_name = azurerm_resource_group.app.name
 
   tags = local.common_tags
 }
 
 resource "azurerm_dns_zone" "devafusion_net" {
-  name                = "devafusion.net"
+  name                = local.secondary_domain
   resource_group_name = azurerm_resource_group.app.name
 
   tags = local.common_tags
@@ -62,7 +62,7 @@ resource "azurerm_dns_txt_record" "devafusion_com_google_verification" {
   ttl                 = 3600
 
   record {
-    value = azurerm_key_vault_secret.google_verification_devafusion_com.value
+    value = data.azurerm_key_vault_secret.google_verification_devafusion_com.value
   }
 }
 
@@ -73,7 +73,7 @@ resource "azurerm_dns_txt_record" "devafusion_net_google_verification" {
   ttl                 = 3600
 
   record {
-    value = azurerm_key_vault_secret.google_verification_devafusion_net.value
+    value = data.azurerm_key_vault_secret.google_verification_devafusion_net.value
   }
 }
 
