@@ -25,3 +25,9 @@ variable "node_version" {
 variable "tags" {
   type = map(string)
 }
+
+variable "app_settings" {
+  description = "App settings applied to the Linux Web App."
+  type        = map(string)
+  default     = {}
+}

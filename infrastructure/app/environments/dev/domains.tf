@@ -1,6 +1,6 @@
 resource "azapi_resource" "devafusion_com_domain" {
   type      = "Microsoft.DomainRegistration/domains@2024-11-01"
-  name      = "devafusion.com"
+  name      = azurerm_dns_zone.devafusion_com.name
   parent_id = azurerm_resource_group.app.id
 
   schema_validation_enabled = false
@@ -17,7 +17,7 @@ resource "azapi_resource" "devafusion_com_domain" {
 
 resource "azapi_resource" "devafusion_net_domain" {
   type      = "Microsoft.DomainRegistration/domains@2024-11-01"
-  name      = "devafusion.net"
+  name      = azurerm_dns_zone.devafusion_net.name
   parent_id = azurerm_resource_group.app.id
 
   schema_validation_enabled = false

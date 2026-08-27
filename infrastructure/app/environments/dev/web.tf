@@ -9,11 +9,15 @@ module "webapp" {
   node_version          = var.node_version
   web_app_name          = var.web_app_name
 
+  app_settings = {
+    NEXT_PUBLIC_GA_ID = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
+  }
+
   tags = local.common_tags
 }
 
 resource "azurerm_app_service_custom_hostname_binding" "com" {
-  hostname            = "devafusion.com"
+  hostname            = azurerm_dns_zone.devafusion_com.name
   app_service_name    = module.webapp.web_app_name
   resource_group_name = azurerm_resource_group.app.name
 
@@ -30,7 +34,7 @@ resource "azurerm_app_service_custom_hostname_binding" "com" {
 }
 
 resource "azurerm_app_service_custom_hostname_binding" "net" {
-  hostname            = "devafusion.net"
+  hostname            = azurerm_dns_zone.devafusion_net.name
   app_service_name    = module.webapp.web_app_name
   resource_group_name = azurerm_resource_group.app.name
 
