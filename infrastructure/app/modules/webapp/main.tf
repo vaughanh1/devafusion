@@ -27,6 +27,9 @@ resource "azurerm_linux_web_app" "this" {
     }
 
     app_command_line = "node server.js"
+
+    health_check_path                 = var.health_check_path
+    health_check_eviction_time_in_min = var.health_check_path != null ? var.health_check_eviction_time_in_min : null
   }
 
   app_settings = var.app_settings

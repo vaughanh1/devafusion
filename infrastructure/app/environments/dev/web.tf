@@ -9,6 +9,9 @@ module "webapp" {
   node_version          = var.node_version
   web_app_name          = var.web_app_name
 
+  health_check_path                 = "/api/health"
+  health_check_eviction_time_in_min = 2
+
   app_settings = {
     NEXT_PUBLIC_GA_ID = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
   }
