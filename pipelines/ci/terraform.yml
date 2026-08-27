@@ -21,8 +21,11 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
-  terraformPlanFile: "tfplan"
+  - name: terraformWorkingDirectory
+    value: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
+  - name: terraformPlanFile
+    value: "tfplan"
+  - group: devafusion-google-search-verification
 
 stages:
   - stage: Plan
