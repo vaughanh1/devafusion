@@ -31,3 +31,15 @@ variable "app_settings" {
   type        = map(string)
   default     = {}
 }
+
+variable "health_check_path" {
+  description = "Path pinged by App Service Health check. Null disables the feature."
+  type        = string
+  default     = null
+}
+
+variable "health_check_eviction_time_in_min" {
+  description = "Minutes an unhealthy instance is pinged before eviction from the load balancer. Only used when health_check_path is set. Valid range: 2-10."
+  type        = number
+  default     = 2
+}
