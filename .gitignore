@@ -91,6 +91,10 @@ crash.*.log
 playwright-report/
 test-results/
 
+# Locally cached third-party CLI binaries (e.g. gitleaks), fetched and
+# checksum-verified on demand by scripts/ensure-gitleaks.mjs.
+.tools/
+
 # ============================================================
 # Temporary files
 # ============================================================

@@ -1,3 +1,10 @@
+GITLEAKS_BIN="$(node scripts/ensure-gitleaks.mjs)"
+if [ -z "$GITLEAKS_BIN" ]; then
+  echo "gitleaks binary could not be prepared; aborting commit." >&2
+  exit 1
+fi
+"$GITLEAKS_BIN" protect --staged --redact --config .gitleaks.toml
+
 cd src/web
 npm run lint
 npm run typecheck

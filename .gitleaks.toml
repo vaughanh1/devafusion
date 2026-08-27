@@ -1,0 +1,22 @@
+# Gitleaks configuration for devafusion.
+#
+# Extends the default gitleaks rule set (secrets, tokens, private keys) and
+# layers a repository-specific allowlist on top to suppress known-safe,
+# high-entropy strings that are not secrets (lockfile integrity hashes,
+# Terraform provider checksums, generated CSS/theme tokens).
+#
+# Reference: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for known-safe generated artifacts"
+paths = [
+  '''package-lock\.json$''',
+  '''src/web/package-lock\.json$''',
+  '''.*/\.terraform\.lock\.hcl$''',
+  '''node_modules/.*''',
+  '''\.next/.*''',
+  '''\.tools/.*''',
+]
