@@ -35,6 +35,12 @@ stages:
         steps:
           - checkout: self
 
+          - script: |
+              set -euo pipefail
+              chmod +x scripts/ci/gitleaks-scan.sh
+              ./scripts/ci/gitleaks-scan.sh
+            displayName: Scan for secrets (gitleaks)
+
           - task: UseNode@1
             displayName: Install Node.js 24
             inputs:
