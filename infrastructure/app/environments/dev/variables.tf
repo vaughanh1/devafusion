@@ -33,3 +33,15 @@ variable "web_app_name" {
   description = "Globally unique Azure Web App name."
   type        = string
 }
+
+variable "google_verification_devafusion_com" {
+  description = "Google Search Console verification TXT value for devafusion.com."
+  type        = string
+  sensitive   = true
+}
+
+variable "google_verification_devafusion_net" {
+  description = "Google Search Console verification TXT value for devafusion.net."
+  type        = string
+  sensitive   = true
+}

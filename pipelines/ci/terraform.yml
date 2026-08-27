@@ -21,8 +21,11 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  terraformWorkingDirectory: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
-  terraformPlanFile: "tfplan"
+  - name: terraformWorkingDirectory
+    value: "$(Build.SourcesDirectory)/infrastructure/app/environments/dev"
+  - name: terraformPlanFile
+    value: "tfplan"
+  - group: devafusion-google-search-verification
 
 stages:
   - stage: Plan
@@ -60,6 +63,9 @@ stages:
                   -input=false \
                   -var-file=dev.tfvars \
                   -out="$(terraformPlanFile)"
+            env:
+              TF_VAR_google_verification_devafusion_com: $(GOOGLE_VERIFICATION_DEVAFUSION_COM)
+              TF_VAR_google_verification_devafusion_net: $(GOOGLE_VERIFICATION_DEVAFUSION_NET)
 
           - task: PublishPipelineArtifact@1
             displayName: Publish Terraform plan
