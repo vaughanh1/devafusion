@@ -273,7 +273,20 @@ stages:
 
               cd "$(webWorkingDirectory)"
 
+              # Playwright exits 1 when --grep matches zero specs. No
+              # @visual-tagged spec exists yet (this job is a scaffold
+              # until the first screenshot baseline is added) — treat
+              # "no tests found" as a pass rather than a build failure,
+              # while still failing the build on a genuine assertion
+              # failure once a real @visual spec exists.
+              set +e
               npx playwright test --grep @visual --reporter=junit
+              exit_code=$?
+              set -e
+
+              if [ "$exit_code" -ne 0 ] && ! grep -q 'testsuites.*tests="0"' tests-e2e-results/junit.xml 2>/dev/null; then
+                exit "$exit_code"
+              fi
             displayName: Run Playwright visual regression suite
             env:
               CI: "true"
