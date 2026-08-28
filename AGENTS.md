@@ -50,7 +50,7 @@ Before staging or committing any files, you MUST inspect your local Git status (
 
 ### 🏗️ Infrastructure Path Checks
 
-- IF changes have been made to files inside `/infrastructure` or your `pipelines/*terraform.yml` or your `pipelines/*infrastructure.yml` paths:
+- IF changes have been made to files inside `/infrastructure` or your `pipelines/ci/infrastructure.yml` or your `pipelines/cd/infrastructure.yml` paths:
   1. **Terraform Format:** `terraform fmt -check`
   2. **Terraform Validation:** `terraform validate`
 - ELSE: Skip Terraform checks entirely and log: "Infrastructure unchanged. Skipping Terraform validation."
@@ -67,7 +67,7 @@ Before staging or committing any files, you MUST inspect your local Git status (
 
 - Every commit is scanned by **gitleaks** via the Husky pre-commit hook (`scripts/ensure-gitleaks.mjs` fetches the official, checksum-verified release binary into a git-ignored `.tools/` cache on first run; no unofficial npm wrapper packages are used, per the Standardized Tooling rule).
 - The hook runs `gitleaks protect --staged --config .gitleaks.toml` and aborts the commit on any finding. This is the local enforcement layer for the Zero Hardcoded Secrets rule.
-- CI provides a second, server-side enforcement layer scanning the full pushed history on the `devafusion-web-ci` and `devafusion-terraform-ci` pipelines using the same pinned, checksum-verified gitleaks release.
+- CI provides a second, server-side enforcement layer scanning the full pushed history on the `devafusion-web-ci` and `devafusion-infrastructure-ci` pipelines using the same pinned, checksum-verified gitleaks release.
 - If gitleaks flags a finding that is a genuine secret (not a false positive), do not silence it via the allowlist. Stop, tell the Principal Engineer, and treat it as requiring immediate credential rotation.
 
 ### Self-Correction Loop
