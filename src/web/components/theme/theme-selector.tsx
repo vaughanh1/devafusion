@@ -22,26 +22,29 @@ const SCALE_OPTIONS: ReadonlyArray<{ value: A11yScale; label: string }> = [
   { value: "accessible-xl", label: "Accessible XL" },
 ];
 
-function isA11yTheme(value: string | null): value is A11yTheme {
+// Exported for unit coverage of the theme token selection and cookie
+// string parsing formulas (src/web/__tests__/AGENTS.md) — these are pure
+// functions with no DOM/React dependency beyond document.cookie itself.
+export function isA11yTheme(value: string | null): value is A11yTheme {
   return (
     value === "obsidian" || value === "editorial" || value === "tactical"
   );
 }
 
-function isA11yScale(value: string | null): value is A11yScale {
+export function isA11yScale(value: string | null): value is A11yScale {
   return value === "normal" || value === "large" || value === "accessible-xl";
 }
 
-function readCookie(key: string): string | null {
+export function readCookie(key: string): string | null {
   const match = document.cookie.match(new RegExp(`(?:^|; )${key}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function writeCookie(key: string, value: string) {
+export function writeCookie(key: string, value: string) {
   document.cookie = `${key}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`;
 }
 
-function clearCookie(key: string) {
+export function clearCookie(key: string) {
   document.cookie = `${key}=; path=/; max-age=0; SameSite=Lax`;
 }
 

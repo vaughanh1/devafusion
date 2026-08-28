@@ -17,12 +17,40 @@ pr:
       - src/web/**
       - pipelines/ci/web.yml
 
+parameters:
+  # Defaults strictly to chromium to avoid the ~700 MB multi-browser
+  # binary download on every run. Pass another value from the "Run
+  # Pipeline" dialog on demand (root AGENTS.md, Browser Binary Bandwidth
+  # Mitigation) — never changed by editing this file for a one-off run.
+  - name: playwrightBrowserTarget
+    displayName: Playwright browser target
+    type: string
+    default: chromium
+    values:
+      - chromium
+      - firefox
+      - webkit
+  # Ad hoc feature-suite toggles, read directly from process.env by the
+  # test runners (src/web/__tests__/AGENTS.md) — flipping these from the
+  # "Run Pipeline" variables panel needs no commit to develop.
+  - name: testDbActions
+    displayName: Run TEST_DB_ACTIONS suite
+    type: boolean
+    default: false
+  - name: testMfaFlows
+    displayName: Run TEST_MFA_FLOWS suite
+    type: boolean
+    default: false
+
 pool:
   vmImage: ubuntu-latest
 
 variables:
   webWorkingDirectory: "$(Build.SourcesDirectory)/src/web"
   webArtifactDirectory: "$(Build.ArtifactStagingDirectory)/web"
+  PLAYWRIGHT_BROWSER_TARGET: "${{ parameters.playwrightBrowserTarget }}"
+  TEST_DB_ACTIONS: "${{ parameters.testDbActions }}"
+  TEST_MFA_FLOWS: "${{ parameters.testMfaFlows }}"
 
 stages:
   - stage: Build
@@ -45,6 +73,14 @@ stages:
             displayName: Install Node.js 24
             inputs:
               version: "24.x"
+
+          - task: Cache@2
+            displayName: Cache npm dependencies
+            inputs:
+              key: 'npm | "$(Agent.OS)" | $(webWorkingDirectory)/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(webWorkingDirectory)/node_modules
 
           - script: |
               set -euo pipefail
@@ -76,3 +112,179 @@ stages:
               targetPath: "$(webArtifactDirectory)"
               artifact: web-application
               publishLocation: pipeline
+
+  - stage: Test
+    displayName: Test web application
+    dependsOn: Build
+
+    jobs:
+      - job: UnitTests
+        displayName: Vitest unit and component tests
+
+        steps:
+          - checkout: self
+
+          - task: UseNode@1
+            displayName: Install Node.js 24
+            inputs:
+              version: "24.x"
+
+          - task: Cache@2
+            displayName: Cache npm dependencies
+            inputs:
+              key: 'npm | "$(Agent.OS)" | $(webWorkingDirectory)/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(webWorkingDirectory)/node_modules
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npm ci
+              npm run test:unit -- --reporter=junit --outputFile=coverage/junit.xml --reporter=default
+            displayName: Run Vitest with coverage
+            env:
+              TEST_DB_ACTIONS: $(TEST_DB_ACTIONS)
+              TEST_MFA_FLOWS: $(TEST_MFA_FLOWS)
+
+          - task: PublishTestResults@2
+            displayName: Publish Vitest results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: "coverage/junit.xml"
+              searchFolder: "$(webWorkingDirectory)"
+              testRunTitle: "Vitest unit tests"
+
+          - task: PublishCodeCoverageResults@2
+            displayName: Publish Vitest coverage
+            condition: succeededOrFailed()
+            inputs:
+              summaryFileLocation: "$(webWorkingDirectory)/coverage/lcov.info"
+
+      - job: E2ETests
+        displayName: Playwright end-to-end tests
+        dependsOn: []
+
+        steps:
+          - checkout: self
+
+          - task: UseNode@1
+            displayName: Install Node.js 24
+            inputs:
+              version: "24.x"
+
+          - task: Cache@2
+            displayName: Cache npm dependencies
+            inputs:
+              key: 'npm | "$(Agent.OS)" | $(webWorkingDirectory)/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(webWorkingDirectory)/node_modules
+
+          # Playwright's own browser binary cache is keyed by version, so
+          # a cache hit here skips the ~700 MB re-download that would
+          # otherwise happen on every pipeline run (root AGENTS.md,
+          # Browser Binary Bandwidth Mitigation).
+          - task: Cache@2
+            displayName: Cache Playwright browser binaries
+            inputs:
+              key: 'playwright | "$(Agent.OS)" | $(webWorkingDirectory)/package-lock.json'
+              path: $(HOME)/.cache/ms-playwright
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npm ci
+              npx playwright install --with-deps "$(PLAYWRIGHT_BROWSER_TARGET)"
+              npm run build
+
+              cp -R .next/static .next/standalone/.next/static
+              if [ -d public ]; then
+                cp -R public .next/standalone/public
+              fi
+            displayName: Build application for E2E
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npm run test:e2e -- --reporter=junit
+            displayName: Run Playwright end-to-end tests
+            env:
+              CI: "true"
+              PLAYWRIGHT_BROWSER_TARGET: $(PLAYWRIGHT_BROWSER_TARGET)
+              TEST_DB_ACTIONS: $(TEST_DB_ACTIONS)
+              TEST_MFA_FLOWS: $(TEST_MFA_FLOWS)
+
+          - task: PublishTestResults@2
+            displayName: Publish Playwright results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: "tests-e2e-results/junit.xml"
+              searchFolder: "$(webWorkingDirectory)"
+              testRunTitle: "Playwright E2E tests"
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Playwright failure artifacts
+            condition: failed()
+            inputs:
+              targetPath: "$(webWorkingDirectory)/tests-e2e/.playwright-output"
+              artifact: playwright-failure-artifacts
+              publishLocation: pipeline
+
+      - job: VisualRegression
+        displayName: Playwright visual regression (Docker font-safe)
+        dependsOn: []
+        # Runs the official, pinned Playwright image so screenshot
+        # baselines are captured against the exact font stack the Ubuntu
+        # pipeline agent renders with — eliminates local-OS
+        # (Windows/macOS) vs. cloud-runner false-positive diffs (root
+        # AGENTS.md, Visual Regression Docker Enforcers).
+        container:
+          image: mcr.microsoft.com/playwright:v1.62.1-noble
+          options: --ipc=host
+
+        steps:
+          - checkout: self
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npm ci
+              npm run build
+
+              cp -R .next/static .next/standalone/.next/static
+              if [ -d public ]; then
+                cp -R public .next/standalone/public
+              fi
+            displayName: Build application for visual regression
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npx playwright test --grep @visual --reporter=junit
+            displayName: Run Playwright visual regression suite
+            env:
+              CI: "true"
+              PLAYWRIGHT_BROWSER_TARGET: $(PLAYWRIGHT_BROWSER_TARGET)
+
+          - task: PublishTestResults@2
+            displayName: Publish visual regression results
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: "tests-e2e-results/junit.xml"
+              searchFolder: "$(webWorkingDirectory)"
+              testRunTitle: "Playwright visual regression"
+

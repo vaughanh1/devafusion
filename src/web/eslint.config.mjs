@@ -28,7 +28,10 @@ const eslintConfig = defineConfig([
       "check-file/folder-naming-convention": [
         "error",
         {
-          "app/**/": "NEXT_JS_APP_ROUTER_CASE",
+          // Test-locality directories (src/web/__tests__/AGENTS.md) are
+          // exempt from route-segment casing — they hold test files, not
+          // route segments, and always use the literal "__tests__" name.
+          "app/**/!(__tests__)/": "NEXT_JS_APP_ROUTER_CASE",
           "components/*/": "KEBAB_CASE",
           "features/*/": "KEBAB_CASE",
         },

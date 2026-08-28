@@ -42,6 +42,7 @@ These apply to every module and every stack in this repository, regardless of wh
 Stack- and module-specific technical rules are kept out of this Hub so it never needs editing when a new module is added. Consult the spoke that governs the files you are touching:
 
 - **[`src/web/AGENTS.md`](./src/web/AGENTS.md)** — Next.js App Router, TypeScript, Tailwind, and Routing/SEO rules for the web application.
+- **[`src/web/__tests__/AGENTS.md`](./src/web/__tests__/AGENTS.md)** — Vitest/Playwright testing rules, locality conventions, coverage transparency, and CI environment toggles for the web application's test suites.
 - **[`infrastructure/AGENTS.md`](./infrastructure/AGENTS.md)** — Terraform, Azure App Service, and Key Vault rules for infrastructure code.
 - **[`.templates/module.agent.md`](./.templates/module.agent.md)** — Reusable spoke template for instantiating a new module's rules (e.g. a future Auth module). Copy it, fill in the placeholders, and add it to this index.
 ## 5. Strict Pre-Flight Validation Gate
