@@ -52,13 +52,33 @@ export default function LegalPage() {
 
         <div>
           <h2 className="text-xl font-semibold text-foreground">
+            Accessibility theme preference
+          </h2>
+          <p className="mt-2">
+            If you choose a colour theme or text size from the controls in
+            the site footer, that choice is saved in two strictly necessary
+            cookies (<code>devafusion-a11y-theme</code> and{" "}
+            <code>devafusion-a11y-scale</code>) so the site can apply it
+            immediately on your next visit, before the page renders. These
+            cookies store only your chosen preference value, are not used
+            for tracking or analytics, and are not shared with any third
+            party. Selecting &quot;System&quot; removes the theme cookie and
+            returns the site to following your browser&apos;s own light or
+            dark mode setting.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">
             What is not collected
           </h2>
           <p className="mt-2">
             This site does not sell or share visitor data with third
             parties beyond Google Analytics, does not run advertising, and
             does not use any tracking cookies other than the analytics
-            cookies described above.
+            cookies described above. The accessibility preference cookies
+            described above store only your chosen theme and text size and
+            are not used for tracking.
           </p>
         </div>
 

@@ -18,10 +18,11 @@ Governs: `<MODULE_ROOT_PATH>`
 
 ## Next.js / React Boundaries
 
-- **Server/Client Separation:** `<Describe where this module's Server Components end and 'use client' boundaries begin — e.g. "Auth session reads are Server Components; the sign-in form and its client-side validation state are the only 'use client' boundary.">`
+- **Server-First, Leaf-Isolated Client Boundaries:** `<Describe where this module's Server Components end and 'use client' boundaries begin — e.g. "Auth session reads are Server Components; the sign-in form and its client-side validation state are the only 'use client' leaf.">` This module follows the same server-first, leaf-isolation discipline as the rest of the app (see `src/web/AGENTS.md`'s Next.js & React Boundaries section) — never mark a route file or structural container as a Client Component.
 - **Do not over-nest client state:** `<Describe the module's state ownership — e.g. "Session state is read server-side per request; no client-side global auth store is permitted.">`
 - **Typed Routes:** All `<Link href="...">` and `router.push()` calls within this module must resolve against `next.config.ts`'s `typedRoutes: true` — verify the target route exists in the file-system route tree before writing it.
 - **Standalone Output Target:** This module must not introduce anything (a custom server entrypoint, an incompatible dependency) that breaks the root `next.config.ts`'s `output: 'standalone'` setting.
+- **Theme & Accessibility Tokens:** Any UI this module renders consumes the existing semantic tokens and `data-a11y-theme` profiles defined in `src/web/AGENTS.md`'s Accessibility Theme Engine section — never define ad hoc colors or a parallel theme/preference mechanism.
 
 ## TypeScript Strict Blocks
 

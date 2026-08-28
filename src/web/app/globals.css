@@ -37,6 +37,56 @@
   }
 }
 
+/*
+ * Accessibility Theme Engine (src/web/AGENTS.md). An explicit user choice,
+ * set via the devafusion-a11y-theme cookie and the [data-a11y-theme]
+ * attribute on <html>, always wins over the prefers-color-scheme default
+ * above because these rules are declared after it (equal specificity,
+ * later source order wins). Every pair below is checked against the real
+ * WCAG relative-luminance formula, not eyeballed:
+ * https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+ */
+[data-a11y-theme="obsidian"] {
+  --background: #0b0f19;
+  --foreground: #f3f4f6;
+  --surface: #161f30;
+  --surface-border: #4c619e;
+  --accent: #ff007f;
+  --accent-secondary: #8b5cf6;
+  --accent-foreground: #0b0f19;
+  --muted: #b4bccb;
+}
+
+[data-a11y-theme="editorial"] {
+  --background: #f9f6f0;
+  --foreground: #222222;
+  --surface: #f1ece1;
+  --surface-border: #897a5e;
+  --accent: #004c9e;
+  --accent-secondary: #5b21b6;
+  --accent-foreground: #ffffff;
+  --muted: #4f4f4f;
+}
+
+[data-a11y-theme="tactical"] {
+  --background: #000000;
+  --foreground: #ffffff;
+  --surface: #000000;
+  --surface-border: #ffffff;
+  --accent: #ffff00;
+  --accent-secondary: #ffff00;
+  --accent-foreground: #000000;
+  --muted: #cccccc;
+}
+
+html[data-a11y-scale="large"] {
+  font-size: 112.5%;
+}
+
+html[data-a11y-scale="accessible-xl"] {
+  font-size: 125%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
