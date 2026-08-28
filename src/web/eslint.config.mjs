@@ -1,11 +1,20 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import checkFile from "eslint-plugin-check-file";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    // eslint-config-next's core-web-vitals already registers the
+    // "jsx-a11y" plugin (for its own narrow rule subset), so only the
+    // rules are merged here — re-declaring `plugins` conflicts with that
+    // existing registration. Enables the plugin's full recommended rule
+    // set on top (src/web/AGENTS.md).
+    rules: jsxA11y.flatConfigs.recommended.rules,
+  },
   {
     files: [
       "app/**/*.{ts,tsx}",
