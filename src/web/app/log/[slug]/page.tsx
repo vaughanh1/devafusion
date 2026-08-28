@@ -39,24 +39,24 @@ export default async function LogEntryPage({ params }: LogEntryPageProps) {
 
   return (
     <article className="mx-auto max-w-4xl px-6 py-20">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
+      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted">
         Engineering log
       </p>
 
       <time
         dateTime={entry.date}
-        className="mt-4 block text-sm font-medium text-zinc-500"
+        className="mt-4 block text-sm font-medium text-muted"
       >
         {new Intl.DateTimeFormat("en-GB", { dateStyle: "long" }).format(
           new Date(`${entry.date}T00:00:00`),
         )}
       </time>
 
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950">
+      <h1 className="mt-3 text-4xl font-semibold tracking-tight text-foreground">
         {entry.title}
       </h1>
 
-      <p className="mt-6 text-lg leading-8 text-zinc-600">{entry.summary}</p>
+      <p className="mt-6 text-lg leading-8 text-muted">{entry.summary}</p>
 
       <div className="mt-12 grid gap-10 sm:grid-cols-2">
         <LogSection title="Decisions" items={entry.decisions} />
@@ -70,10 +70,10 @@ export default async function LogEntryPage({ params }: LogEntryPageProps) {
 function LogSection({ title, items }: { title: string; items: string[] }) {
   return (
     <section>
-      <h2 className="text-xl font-semibold tracking-tight text-zinc-950">
+      <h2 className="text-xl font-semibold tracking-tight text-foreground">
         {title}
       </h2>
-      <ul className="mt-4 list-disc space-y-2 pl-5 leading-7 text-zinc-600">
+      <ul className="mt-4 list-disc space-y-2 pl-5 leading-7 text-muted">
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}

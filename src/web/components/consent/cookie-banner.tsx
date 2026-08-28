@@ -61,12 +61,12 @@ export function CookieBanner() {
     <div
       role="region"
       aria-label="Cookie consent"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-200 bg-white px-6 py-4 shadow-lg"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-surface-border bg-surface px-6 py-4 shadow-lg"
     >
       <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-muted">
           This site uses Google Analytics to understand traffic. See the{" "}
-          <Link href="/legal" className="underline hover:text-zinc-950">
+          <Link href="/legal" className="underline hover:text-foreground">
             privacy and cookies page
           </Link>{" "}
           for details.
@@ -76,14 +76,14 @@ export function CookieBanner() {
           <button
             type="button"
             onClick={() => handleChoice("denied")}
-            className="min-h-11 flex-1 border border-zinc-300 px-4 text-sm font-medium text-zinc-700 transition-colors hover:border-zinc-950 hover:text-zinc-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 sm:flex-none"
+            className="min-h-11 flex-1 border border-surface-border px-4 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground sm:flex-none"
           >
             Reject
           </button>
           <button
             type="button"
             onClick={() => handleChoice("granted")}
-            className="min-h-11 flex-1 bg-zinc-950 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-950 sm:flex-none"
+            className="min-h-11 flex-1 bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:flex-none"
           >
             Accept
           </button>

@@ -10,15 +10,15 @@ export const metadata: Metadata = {
 export default function LegalPage() {
   return (
     <section className="mx-auto max-w-4xl px-6 py-20">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
+      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted">
         Legal
       </p>
 
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950">
+      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">
         Privacy & cookies.
       </h1>
 
-      <div className="mt-6 space-y-6 text-lg leading-8 text-zinc-600">
+      <div className="mt-6 space-y-6 text-lg leading-8 text-muted">
         <p>
           Devafusion is a personal technical laboratory. This page explains
           the only tracking used on this site and the choices you have over
@@ -26,7 +26,7 @@ export default function LegalPage() {
         </p>
 
         <div>
-          <h2 className="text-xl font-semibold text-zinc-950">
+          <h2 className="text-xl font-semibold text-foreground">
             Google Analytics
           </h2>
           <p className="mt-2">
@@ -51,7 +51,7 @@ export default function LegalPage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold text-zinc-950">
+          <h2 className="text-xl font-semibold text-foreground">
             What is not collected
           </h2>
           <p className="mt-2">
@@ -63,10 +63,10 @@ export default function LegalPage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold text-zinc-950">Questions</h2>
+          <h2 className="text-xl font-semibold text-foreground">Questions</h2>
           <p className="mt-2">
             For questions about this page, see the{" "}
-            <Link href="/contact" className="underline hover:text-zinc-950">
+            <Link href="/contact" className="underline hover:text-foreground">
               contact page
             </Link>
             .

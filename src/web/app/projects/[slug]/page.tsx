@@ -39,21 +39,21 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
   return (
     <section className="mx-auto max-w-4xl px-6 py-20">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
+      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted">
         Project
       </p>
 
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950">
+      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">
         {project.title}
       </h1>
 
-      <p className="mt-6 text-lg leading-8 text-zinc-600">
+      <p className="mt-6 text-lg leading-8 text-muted">
         {project.description}
       </p>
 
-      <ul className="mt-8 flex flex-wrap gap-2 text-sm text-zinc-500">
+      <ul className="mt-8 flex flex-wrap gap-2 text-sm text-muted">
         {project.tags.map((tag) => (
-          <li key={tag} className="border border-zinc-200 px-3 py-1">
+          <li key={tag} className="border border-surface-border px-3 py-1">
             {tag}
           </li>
         ))}
