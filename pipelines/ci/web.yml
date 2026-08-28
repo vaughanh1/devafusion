@@ -214,7 +214,12 @@ stages:
 
               cd "$(webWorkingDirectory)"
 
-              npm run test:e2e -- --reporter=junit
+              # Relies on playwright.config.ts's own CI-conditional
+              # reporter (junit -> tests-e2e-results/junit.xml + list)
+              # rather than an --reporter=junit CLI override, which
+              # would replace it with a stdout-only reporter and leave
+              # no file for PublishTestResults@2 to ingest below.
+              npm run test:e2e
             displayName: Run Playwright end-to-end tests
             env:
               CI: "true"
@@ -273,6 +278,12 @@ stages:
 
               cd "$(webWorkingDirectory)"
 
+              # Rely on playwright.config.ts's own CI reporter (junit ->
+              # tests-e2e-results/junit.xml + list) rather than overriding
+              # --reporter here, which would replace it with a
+              # stdout-only junit reporter and break the JUnit file this
+              # job's PublishTestResults@2 step depends on.
+              #
               # Playwright exits 1 when --grep matches zero specs. No
               # @visual-tagged spec exists yet (this job is a scaffold
               # until the first screenshot baseline is added) — treat
@@ -280,11 +291,11 @@ stages:
               # while still failing the build on a genuine assertion
               # failure once a real @visual spec exists.
               set +e
-              npx playwright test --grep @visual --reporter=junit
+              npx playwright test --grep @visual
               exit_code=$?
               set -e
 
-              if [ "$exit_code" -ne 0 ] && ! grep -q 'testsuites.*tests="0"' tests-e2e-results/junit.xml 2>/dev/null; then
+              if [ "$exit_code" -ne 0 ] && ! grep -q 'tests="0"' tests-e2e-results/junit.xml 2>/dev/null; then
                 exit "$exit_code"
               fi
             displayName: Run Playwright visual regression suite
