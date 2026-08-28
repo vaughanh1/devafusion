@@ -9,15 +9,15 @@ export const metadata: Metadata = {
 export default function ExperimentsPage() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-zinc-500">
+      <p className="text-sm font-medium uppercase tracking-[0.2em] text-muted">
         Experiments
       </p>
 
-      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950">
+      <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">
         Technical experiments.
       </h1>
 
-      <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600">
+      <p className="mt-6 max-w-2xl text-lg leading-8 text-muted">
         A collection of experiments exploring technologies, techniques,
         architectures and ideas.
       </p>

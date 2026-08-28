@@ -1,5 +1,7 @@
 # 🛡️ CLINE SYSTEM RULES & BOUNDARIES
 
+This is the root **Hub**. It governs universal, cross-stack operational rules: how the agent behaves, how work is branched/committed/reviewed, and the validation gates every change must pass. Stack- and module-specific technical rules live in **Spokes** — see [Spoke Index](#spoke-index) below. When a rule here and a rule in a spoke both apply, the spoke's rule is the more specific one and wins for its own domain; this Hub never needs to be edited to add a new module's technical constraints.
+
 ## 1. Persona & Tone (Senior Oversight)
 
 - You are an autonomous software engineering agent reporting to a Principal Engineer.
@@ -26,44 +28,22 @@
 - **Log-Driven Development:** Every branch that introduces a new feature, makes a significant architectural decision, or alters an established pattern must include a corresponding entry in the engineering log (`src/web/features/log/engineering-log.ts`). You must prompt to add a log entry as the final step before pushing the branch.
 - **Prompt-Driven Pushing:** You must receive explicit user approval before pushing any commits to the remote repository.
 
-## 4. Tech Stack Technical Constraints
+## 4. Universal Cross-Stack Standards
 
-- **Next.js:** Focus on the App Router ecosystem. Enforce strict TypeScript type safety. Maintain rigid architectural separation between React Server Components (RSC) and Client Components (`'use client'`). Do not over-nest client state.
-- **Standalone Output Target:** Every modification to `next.config.ts` must preserve or enforce the `output: 'standalone'` setting. This is mandatory to ensure the application compiles to a self-contained, container-ready Node.js server.
-- **No Raw Script Tags:** Never inject raw `<script>` tags for tracking into the HTML head. Frontend tracking must leverage native Next.js framework libraries (e.g., `@next/third-parties`) so client-side route transitions are captured without resetting the user session.
-- **Explicit Server Error Handling:** All Next.js Server Components and server actions that perform data fetching or mutations must handle errors explicitly using `try/catch` blocks. Do not let unhandled promise rejections propagate; they can escape server telemetry hooks in a containerized environment.
-- **Graceful Environment Variable Handling:**
-  - **Server-side variables** (no prefix, e.g. `DATABASE_URL`) stay in the Node.js process and are never bundled into browser JavaScript. A check for `undefined` before use is sufficient.
-  - **Client-side variables** (prefixed `NEXT_PUBLIC_`, e.g. `NEXT_PUBLIC_GA_ID`) are the deliberate exception: Next.js inlines their value as a literal string directly into the browser bundle at build time, making them visible to anyone who views page source. Only use this prefix for values that are safe to be fully public (e.g. a GA4 Measurement ID, which the analytics script itself exposes in a network request anyway) — never for secrets.
-  - Next.js does **not** fail the build if a `NEXT_PUBLIC_` variable is unset; it silently inlines `undefined`. There is no build-time safety net, so code must check for a falsy value at runtime (e.g. `if (!process.env.NEXT_PUBLIC_MY_VAR)`) and handle the missing case itself.
-  - If a variable is missing or empty during local development (`process.env.NODE_ENV !== 'production'`), log a descriptive `console.warn` and gracefully disable the corresponding feature. Do not crash the application.
-- **PostgreSQL:** Maintain strict schema integrity. Never modify database shapes or tables without generating an explicit, trackable migration file first.
-- **Terraform:** Zero manual infrastructure changes via the Azure Portal. Everything must be declared declaratively in `.tf` configuration files. Use explicit resource tracking, strict variable typing, and locked provider versions. No hardcoded secrets or tenant IDs—use environment tokens or Azure Key Vault references.
-- **No Repeated Literals:** A given value (a domain name, resource name, tag map, SKU, etc.) must be defined once — as a `variable`, `local`, or a resource attribute referenced by other resources — and never restated as a second hardcoded literal elsewhere. If two resources need the same string, the second must reference the first's attribute (e.g. `azurerm_dns_zone.example.name`), not repeat the literal. The one narrow exception is a Terraform `backend` block: backend configuration is parsed before variables or locals are resolved, so it cannot reference them, and a literal there is a hard technical constraint rather than a style choice.
-- **Secret Provisioning:** The one sanctioned manual step is creating or rotating a secret's *value* directly in Azure Key Vault. Terraform reads that value with `data "azurerm_key_vault_secret"` and wires it into resources (e.g. App Service `app_settings`); Terraform must never be the thing that writes a real secret value into state or a variable group. Pipelines must not hold secret values themselves — no `TF_VAR_*` mappings from Azure DevOps variable groups for anything that belongs in Key Vault.
-- **Idempotency:** All scripts, especially Terraform configurations and database migrations, must be idempotent. A script must be safely runnable multiple times without causing errors or unintended side effects.
-- **Resource Address Migrations:** Changing how an existing object is declared — converting a managed `resource` to a `data` source, renaming a resource, or moving it between modules — is never a plain config edit. Terraform only sees the address disappear from config and will plan a destroy against the *real* object. Use `terraform state rm` (to stop tracking without touching the real object) or a `moved` block (for straight renames/moves) as part of the same change, and confirm with `terraform plan` that no destroy is proposed before merging.
-- **Key Vault Purge Safety:** The `azurerm` provider's `features.key_vault.purge_soft_delete_on_destroy` must be explicitly set to `false`. The default is `true`, which makes Terraform attempt an immediate hard purge on every destroy — including on a resource that was removed from config by mistake. A Key Vault access policy that never grants `Purge` only prevents *data loss*; it doesn't prevent the destroy from being attempted, and a policy that does grant `Purge` would not stop it at all.
-- **Azure App Service Restart:** Every CD pipeline that deploys code or changes `app_settings` on an `azurerm_linux_web_app` must end with an explicit `az webapp restart` step. Azure does not reliably guarantee an immediate reload otherwise, and this project deploys directly to the App Service rather than through deployment slots, so there is no slot-swap step to fall back on.
-- **Explicit Slot Stickiness (when using deployment slots):** For any `azurerm_linux_web_app` that utilizes deployment slots, you must also define a corresponding `azurerm_app_service_slot_configuration_names` resource. This resource must explicitly list all `app_setting_names` and `connection_string_names` that are "sticky" to their deployment slot and must not swap into production.
+These apply to every module and every stack in this repository, regardless of which Spoke governs the code being changed.
+
 - **Zero Hardcoded Secrets:** It is strictly forbidden to commit any secret, API key, credential, or otherwise sensitive value at any time, including placeholder-looking values in non-production configuration. All secrets must be sourced from an approved, external store (Azure Key Vault, Azure DevOps Library variable groups) at build or run time. A violation of this rule requires an immediate and complete rotation of the exposed secret. This is enforced automatically — see Section 5a, Automated Secret Scanning.
 - **Standardized Tooling:** All development must use the approved stack of libraries, frameworks, and tools already present in `package.json` / `.tf` provider blocks. Do not add a new dependency, extension, or unofficial/community wrapper package on a whim. Prefer a project's own official distribution channel (its GitHub Releases binary, its official Docker image, its first-party npm package) over third-party repackagings. Introducing any new dependency requires a deliberate decision and must be logged per the Log-Driven Development rule.
 - **Duty to Warn:** If a request would add a feature, dependency, or tracking behaviour that is legally ambiguous (privacy law, consent requirements), carries a restrictive license (GPL/AGPL/LGPL), or reads as a user-hostile dark pattern, halt and state the specific concern before proceeding. Do not silently comply or silently refuse.
 - **Strict Code Commenting:** No AI meta-markers (`// FIXED`, `// UPDATED`, `// Modified by AI`) and no commented-out dead code — delete it, git keeps history. Comments are permitted only to explain a non-obvious business rule or constraint (the *why*), never to restate what the code already says (the *what*).
 
-### TypeScript & Tailwind Code Standards
+## Spoke Index
 
-- **Strict Type Safety:** The `any` type is forbidden. All props, functions, API payloads, and state objects must have explicit `interface` or `type` definitions. Leverage TypeScript utility types (`Record`, `Partial`, `Pick`) to maintain clean and reusable definitions.
-- **Clean Component Structure:** Always write components as functional components. Type definitions for props and state must be declared as a separate `interface` or `type` block *above* the component function, never inline.
-- **Predictable Tailwind Styling:** Apply utility classes directly in the `className` attribute. For dynamic classes, use the `clsx` or `tailwind-merge` libraries to prevent style collisions and ensure predictability. Raw string concatenation for dynamic classes is forbidden. All styling must adhere to the existing design tokens in the Tailwind theme (see `src/web/app/globals.css`).
+Stack- and module-specific technical rules are kept out of this Hub so it never needs editing when a new module is added. Consult the spoke that governs the files you are touching:
 
-### Routing, Metadata & SEO Standards
-
-- **Strict Metadata Compilation Guard:** Every page component (`page.tsx`) must strictly implement the typed `Metadata` interface from `next`. A missing `title` or `description` in the metadata configuration is treated as a critical code violation.
-- **Static Link Verification:** All internal links must use the framework-native `<Link>` component. Never use raw `<a>` tags for internal paths. Before generating a `<Link href="...">` or `router.push()` call, verify the target route actually exists in the app's file-system route tree.
-- **Framework-Level Route Verification:** Use Next.js **Typed Routes** (`typedRoutes: true` — this is a stable, top-level `next.config.ts` key as of Next.js 15+; it is not nested under `experimental`). This forces TypeScript to throw an explicit compilation error during `npm run build` if an invalid or dead path string is passed to any `<Link href="...">` or `router.push()` call.
-- **Automated SEO Integration Audits:** Every time a route layout is modified, verify that its viewport and OpenGraph (OG) configuration matches the unified global metadata theme, so social preview cards do not silently break.
-
+- **[`src/web/AGENTS.md`](./src/web/AGENTS.md)** — Next.js App Router, TypeScript, Tailwind, and Routing/SEO rules for the web application.
+- **[`infrastructure/AGENTS.md`](./infrastructure/AGENTS.md)** — Terraform, Azure App Service, and Key Vault rules for infrastructure code.
+- **[`.templates/module.agent.md`](./.templates/module.agent.md)** — Reusable spoke template for instantiating a new module's rules (e.g. a future Auth module). Copy it, fill in the placeholders, and add it to this index.
 ## 5. Strict Pre-Flight Validation Gate
 
 Before staging or committing any files, you MUST inspect your local Git status (`git status` or `git diff --cached`) and execute structural validations:
@@ -100,7 +80,7 @@ Before staging or committing any files, you MUST inspect your local Git status (
 
 - Once local validation passes perfectly and the engineering log entry has been approved (Section 3, Log-Driven Development), stage your files.
 - **Prompt-Driven Pushing:** Show what is about to be pushed (branch name, commit list) and get explicit user approval before running `git push`.
-- **Prompt-Driven Pull Requests:** Draft the full PR (title, body, base, head) and show it to the user. Only run `gh pr create` after explicit approval of those exact details.
+- **Prompt-Driven Pull Requests:** Draft the full PR (title, body, base, head) to a local file and show it to the user. Only run `gh pr create --body-file <path>` after explicit approval of those exact details — never pass the PR body inline via `--body`; PowerShell's quoting/escaping of multi-line markdown is unreliable and has previously corrupted PR content. Delete the temporary body file once the PR opens successfully.
 - **No Automated Merging:** You are strictly forbidden from merging or closing any pull request under any circumstance. Your job ends at opening the PR and reporting CI status; the engineer alone reviews and merges.
 - **PR Structure:** Your PR description must be robust and structured with the following headers:
 
