@@ -24,7 +24,17 @@ export default defineConfig({
   // raise this in CI (root AGENTS.md cost/speed constraints).
   workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI
-    ? [["junit", { outputFile: "./tests-e2e-results/junit.xml" }], ["list"]]
+    ? [
+        ["junit", { outputFile: "./tests-e2e-results/junit.xml" }],
+        // Feeds the Mocoding Playwright Azure DevOps extension's "Tests"
+        // tab (UploadPlaywrightReport@1 in pipelines/ci/web.yml) with
+        // full trace/video playback. That task only uploads this folder
+        // on a build failure, so a passing run leaves it generated but
+        // never persisted — no extra storage-quota cost on the 2 GB
+        // budget (root AGENTS.md, High-Fidelity Overage Protection).
+        ["html", { outputFolder: "playwright-report", open: "never" }],
+        ["list"],
+      ]
     : "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
@@ -56,5 +66,12 @@ export default defineConfig({
     url: "http://127.0.0.1:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      // The standalone server binds to its container hostname by
+      // default; force it to bind every interface so Playwright's own
+      // 127.0.0.1 health-check (and the Docker-based VisualRegression
+      // job) can reach it inside a container.
+      HOSTNAME: "0.0.0.0",
+    },
   },
 });

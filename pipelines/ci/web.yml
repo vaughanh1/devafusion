@@ -236,6 +236,12 @@ stages:
               searchFolder: "$(webWorkingDirectory)"
               testRunTitle: "Playwright E2E tests"
 
+          - task: UploadPlaywrightReport@1
+            displayName: Publish rich video & trace reports to the Playwright tab
+            condition: failed() # Runs only on a build failure to keep storage costs at zero.
+            inputs:
+              playwrightReportDir: "$(webWorkingDirectory)/playwright-report"
+
           - task: PublishPipelineArtifact@1
             displayName: Publish Playwright failure artifacts
             condition: failed()
@@ -283,21 +289,7 @@ stages:
               # --reporter here, which would replace it with a
               # stdout-only junit reporter and break the JUnit file this
               # job's PublishTestResults@2 step depends on.
-              #
-              # Playwright exits 1 when --grep matches zero specs. No
-              # @visual-tagged spec exists yet (this job is a scaffold
-              # until the first screenshot baseline is added) — treat
-              # "no tests found" as a pass rather than a build failure,
-              # while still failing the build on a genuine assertion
-              # failure once a real @visual spec exists.
-              set +e
               npx playwright test --grep @visual
-              exit_code=$?
-              set -e
-
-              if [ "$exit_code" -ne 0 ] && ! grep -q 'tests="0"' tests-e2e-results/junit.xml 2>/dev/null; then
-                exit "$exit_code"
-              fi
             displayName: Run Playwright visual regression suite
             env:
               CI: "true"
@@ -311,4 +303,27 @@ stages:
               testResultsFiles: "tests-e2e-results/junit.xml"
               searchFolder: "$(webWorkingDirectory)"
               testRunTitle: "Playwright visual regression"
+
+          - task: UploadPlaywrightReport@1
+            displayName: Publish rich video & trace reports to the Playwright tab
+            condition: failed() # Runs only on a build failure to keep storage costs at zero.
+            inputs:
+              playwrightReportDir: "$(webWorkingDirectory)/playwright-report"
+
+          # Baseline bootstrap workflow (src/web/__tests__/AGENTS.md): a
+          # brand-new @visual spec with no committed baseline under
+          # tests-e2e/__screenshots__ fails with a "snapshot doesn't
+          # exist" diff on its first run. Playwright still writes the
+          # actual PNG it rendered inside this pinned Docker image to
+          # test-results/ on that failure — publish it so a maintainer
+          # can download it and commit it as the new baseline (the only
+          # font-safe way to create one, since it must be rendered by
+          # this exact image, not a local OS).
+          - task: PublishPipelineArtifact@1
+            displayName: Publish visual regression baseline candidates
+            condition: failed()
+            inputs:
+              targetPath: "$(webWorkingDirectory)/test-results"
+              artifact: visual-regression-baseline-candidates
+              publishLocation: pipeline
 

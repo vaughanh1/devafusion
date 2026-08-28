@@ -96,9 +96,30 @@ DevOps "Run Pipeline" variables panel without a commit to `develop`:
   that change.
 - `workers: process.env.CI ? 2 : undefined` is a memory ceiling for the
   hosted 7 GB RAM agent, not a suggestion. Do not raise it in CI.
-- Visual regression specs (`*.visual.spec.ts`) only run against the
-  pinned, official `mcr.microsoft.com/playwright` Docker image (see
-  `pipelines/ci/web.yml`'s `Visual` job) so font-rendering differences
-  between a contributor's OS and the Ubuntu pipeline runner never produce
-  a false-positive diff. Do not add screenshot assertions to a spec that
-  runs in the default `chromium` project on the bare hosted agent.
+- Visual regression specs (`*.visual.spec.ts`, test title tagged
+  `@visual`) only run against the pinned, official
+  `mcr.microsoft.com/playwright` Docker image — both locally (via
+  `docker run` against that same image tag) and in
+  `pipelines/ci/web.yml`'s `VisualRegression` job — so font-rendering
+  differences between a contributor's OS and the Ubuntu pipeline runner
+  never produce a false-positive diff. Do not add screenshot assertions
+  to a spec that runs in the default `chromium` project on the bare
+  hosted agent, and never commit a baseline PNG rendered on a local OS
+  outside that container.
+- **Baseline bootstrap:** a brand-new `toHaveScreenshot()` assertion has
+  no committed baseline yet, so its first run fails with a "snapshot
+  doesn't exist" diff — expected, not a regression. Generate it from
+  `src/web` with Docker installed:
+  ```
+  npm run build
+  cp -R .next/static .next/standalone/.next/static
+  cp -R public .next/standalone/public
+  docker run --rm --ipc=host -e CI=true -v ${PWD}:/work -v /work/node_modules -w /work \
+    mcr.microsoft.com/playwright:v1.62.1-noble \
+    bash -c "npm ci && npx playwright test --grep @visual --update-snapshots"
+  ```
+  then commit the resulting PNG under `tests-e2e/__screenshots__/`. If
+  Docker isn't available locally, the `VisualRegression` CI job
+  publishes the Docker-rendered PNG as the
+  `visual-regression-baseline-candidates` pipeline artifact on failure —
+  download and commit that instead of a locally-rendered substitute.
