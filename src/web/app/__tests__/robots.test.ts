@@ -9,7 +9,7 @@ describe("robots", () => {
 
     const result = robots();
 
-    expect(result.sitemap).toBe("https://devafusion.com/sitemap.xml");
+    expect(result.sitemap).toBe("https://devafusion.net/sitemap.xml");
 
     if (original !== undefined) {
       process.env.NEXT_PUBLIC_SITE_URL = original;
