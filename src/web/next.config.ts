@@ -14,10 +14,21 @@ const nextConfig: NextConfig = {
         has: [
           {
             type: "host",
-            value: "devafusion.net",
+            value: "devafusion.com",
           },
         ],
-        destination: "https://devafusion.com/:path*",
+        destination: "https://devafusion.net/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [
+          {
+            type: "host",
+            value: "devafusion.co.uk",
+          },
+        ],
+        destination: "https://devafusion.net/:path*",
         permanent: true,
       },
     ];

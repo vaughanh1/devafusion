@@ -23,3 +23,8 @@ output "devafusion_net_name_servers" {
   description = "Azure DNS name servers for devafusion.net."
   value       = azurerm_dns_zone.devafusion_net.name_servers
 }
+
+output "devafusion_co_uk_name_servers" {
+  description = "Azure DNS name servers for devafusion.co.uk."
+  value       = azurerm_dns_zone.devafusion_co_uk.name_servers
+}

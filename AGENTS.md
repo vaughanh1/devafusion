@@ -27,6 +27,7 @@ This is the root **Hub**. It governs universal, cross-stack operational rules: h
 - **Commits:** Write clean, atomic Git commits following the **Conventional Commits** specification (e.g., `feat(auth): ...`, `fix(db): ...`, `chore(ci): ...`). This is mandatory for automated changelog generation and semantic versioning.
 - **Log-Driven Development:** Every branch that introduces a new feature, makes a significant architectural decision, or alters an established pattern must include a corresponding entry in the engineering log (`src/web/features/log/engineering-log.ts`). You must prompt to add a log entry as the final step before pushing the branch.
 - **Prompt-Driven Pushing:** You must receive explicit user approval before pushing any commits to the remote repository.
+- **Approval Gates Must Actually Stop:** Any step marked as requiring approval (log entry, push, PR details, or any other checkpoint in this file) must end your turn and present the user a real, actionable choice — e.g. the `ask_question` tool, or ending the response outright — with no further tool calls in that same response. Writing a sentence like "requires your approval" and then continuing to execute in the same turn is not an approval gate and is a violation of this rule.
 
 ## 4. Universal Cross-Stack Standards
 
@@ -78,6 +79,7 @@ Before staging or committing any files, you MUST inspect your local Git status (
 
 ## 6. Azure DevOps & GitHub Pull Request Pipeline
 
+- **No Local `terraform apply` — Ever:** You are strictly forbidden from running `terraform apply` (or any equivalent state-mutating command: `terraform destroy`, `terraform import` against a resource still under active design, etc. beyond the narrow import case below) from a local terminal or feature branch, regardless of mode (Plan or Act) or how confident the plan output looks. `terraform apply` runs exactly once, from `pipelines/cd/infrastructure.yml`, against `develop`/`main`, and only after the PR has full pipeline approval. The one narrow exception is `terraform import`, which only attaches an already-real Azure resource to state and writes nothing to Azure — even then, follow it immediately with `terraform plan` (never `apply`) to confirm no destroy is proposed, per the Resource Address Migrations rule in `infrastructure/AGENTS.md`.
 - Once local validation passes perfectly and the engineering log entry has been approved (Section 3, Log-Driven Development), stage your files.
 - **Prompt-Driven Pushing:** Show what is about to be pushed (branch name, commit list) and get explicit user approval before running `git push`.
 - **Prompt-Driven Pull Requests:** Draft the full PR (title, body, base, head) to a local file and show it to the user. Only run `gh pr create --body-file <path>` after explicit approval of those exact details — never pass the PR body inline via `--body`; PowerShell's quoting/escaping of multi-line markdown is unreliable and has previously corrupted PR content. Delete the temporary body file once the PR opens successfully.
