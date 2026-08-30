@@ -13,6 +13,7 @@ import { entry as qaAutomationFramework } from "./entries/qa-automation-framewor
 import { entry as devafusionCoUkDomainAndCanonicalFlip } from "./entries/devafusion-co-uk-domain-and-canonical-flip";
 import { entry as splitEngineeringLogPerEntry } from "./entries/split-engineering-log-per-entry";
 import { entry as coUkDomainPrivacyNotSupported } from "./entries/co-uk-domain-privacy-not-supported";
+import { entry as devafusionComEmailAuthentication } from "./entries/devafusion-com-email-authentication";
 
 export type { LogEntry } from "./types";
 
@@ -36,6 +37,7 @@ const allEntries = [
   devafusionCoUkDomainAndCanonicalFlip,
   splitEngineeringLogPerEntry,
   coUkDomainPrivacyNotSupported,
+  devafusionComEmailAuthentication,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
