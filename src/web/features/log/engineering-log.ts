@@ -12,6 +12,7 @@ import { entry as accessibilityThemeEngine } from "./entries/accessibility-theme
 import { entry as qaAutomationFramework } from "./entries/qa-automation-framework";
 import { entry as devafusionCoUkDomainAndCanonicalFlip } from "./entries/devafusion-co-uk-domain-and-canonical-flip";
 import { entry as splitEngineeringLogPerEntry } from "./entries/split-engineering-log-per-entry";
+import { entry as coUkDomainPrivacyNotSupported } from "./entries/co-uk-domain-privacy-not-supported";
 
 export type { LogEntry } from "./types";
 
@@ -34,6 +35,7 @@ const allEntries = [
   qaAutomationFramework,
   devafusionCoUkDomainAndCanonicalFlip,
   splitEngineeringLogPerEntry,
+  coUkDomainPrivacyNotSupported,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
