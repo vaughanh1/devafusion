@@ -27,6 +27,13 @@ data "azurerm_key_vault_secret" "google_verification_devafusion_net" {
   depends_on = [module.keyvault]
 }
 
+data "azurerm_key_vault_secret" "google_verification_devafusion_co_uk" {
+  name         = "google-site-verification-devafusion-co-uk"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}
+
 data "azurerm_key_vault_secret" "google_analytics_ga4_devafusion" {
   name         = "google-analytics-ga4-devafusion"
   key_vault_id = module.keyvault.key_vault_id

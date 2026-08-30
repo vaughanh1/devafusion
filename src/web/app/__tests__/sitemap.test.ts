@@ -8,12 +8,12 @@ describe("sitemap", () => {
     const paths = entries.map((entry) => entry.url);
 
     expect(paths).toEqual([
-      "https://devafusion.com",
-      "https://devafusion.com/about",
-      "https://devafusion.com/projects",
-      "https://devafusion.com/experiments",
-      "https://devafusion.com/contact",
-      "https://devafusion.com/legal",
+      "https://devafusion.net",
+      "https://devafusion.net/about",
+      "https://devafusion.net/projects",
+      "https://devafusion.net/experiments",
+      "https://devafusion.net/contact",
+      "https://devafusion.net/legal",
     ]);
     expect(new Set(paths).size).toBe(paths.length);
   });

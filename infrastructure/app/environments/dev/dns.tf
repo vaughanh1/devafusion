@@ -1,12 +1,19 @@
 resource "azurerm_dns_zone" "devafusion_com" {
-  name                = local.primary_domain
+  name                = local.secondary_domain
   resource_group_name = azurerm_resource_group.app.name
 
   tags = local.common_tags
 }
 
 resource "azurerm_dns_zone" "devafusion_net" {
-  name                = local.secondary_domain
+  name                = local.primary_domain
+  resource_group_name = azurerm_resource_group.app.name
+
+  tags = local.common_tags
+}
+
+resource "azurerm_dns_zone" "devafusion_co_uk" {
+  name                = local.tertiary_domain
   resource_group_name = azurerm_resource_group.app.name
 
   tags = local.common_tags
@@ -55,6 +62,17 @@ resource "azurerm_dns_txt_record" "devafusion_net_asuid" {
   }
 }
 
+resource "azurerm_dns_txt_record" "devafusion_co_uk_asuid" {
+  name                = "asuid"
+  zone_name           = azurerm_dns_zone.devafusion_co_uk.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = 300
+
+  record {
+    value = module.webapp.custom_domain_verification_id
+  }
+}
+
 resource "azurerm_dns_txt_record" "devafusion_com_google_verification" {
   name                = "@"
   zone_name           = azurerm_dns_zone.devafusion_com.name
@@ -77,6 +95,17 @@ resource "azurerm_dns_txt_record" "devafusion_net_google_verification" {
   }
 }
 
+resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
+  name                = "@"
+  zone_name           = azurerm_dns_zone.devafusion_co_uk.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = 3600
+
+  record {
+    value = data.azurerm_key_vault_secret.google_verification_devafusion_co_uk.value
+  }
+}
+
 data "dns_a_record_set" "webapp" {
   host = module.webapp.default_hostname
 }
@@ -93,6 +122,15 @@ resource "azurerm_dns_a_record" "devafusion_com" {
 resource "azurerm_dns_a_record" "devafusion_net" {
   name                = "@"
   zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = 300
+
+  records = [data.dns_a_record_set.webapp.addrs[0]]
+}
+
+resource "azurerm_dns_a_record" "devafusion_co_uk" {
+  name                = "@"
+  zone_name           = azurerm_dns_zone.devafusion_co_uk.name
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = 300
 
