@@ -49,7 +49,10 @@ resource "azapi_resource" "devafusion_co_uk_domain" {
     properties = {
       dnsType   = "AzureDns"
       autoRenew = true
-      privacy   = true
+      # Nominet, the .uk/.co.uk registry, does not support WHOIS privacy
+      # protection - the registration API rejects privacy = true for this
+      # TLD with a 400 ("The parameter privacy has an invalid value.").
+      privacy   = false
       dnsZoneId = azurerm_dns_zone.devafusion_co_uk.id
     }
   }
