@@ -79,8 +79,16 @@ resource "azurerm_dns_txt_record" "devafusion_com_google_verification" {
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = 3600
 
+  # Azure DNS treats every TXT value at a given name as one recordset, so
+  # the SPF value must live in this same resource rather than a second
+  # azurerm_dns_txt_record at "@" - a duplicate resource collides on the
+  # same recordset ID and terraform apply refuses to create it.
   record {
     value = data.azurerm_key_vault_secret.google_verification_devafusion_com.value
+  }
+
+  record {
+    value = "v=spf1 include:spf.protection.outlook.com -all"
   }
 }
 
@@ -103,17 +111,6 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
 
   record {
     value = data.azurerm_key_vault_secret.google_verification_devafusion_co_uk.value
-  }
-}
-
-resource "azurerm_dns_txt_record" "devafusion_com_spf" {
-  name                = "@"
-  zone_name           = azurerm_dns_zone.devafusion_com.name
-  resource_group_name = azurerm_resource_group.app.name
-  ttl                 = 3600
-
-  record {
-    value = "v=spf1 include:spf.protection.outlook.com -all"
   }
 }
 
