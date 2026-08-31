@@ -14,6 +14,7 @@ import { entry as devafusionCoUkDomainAndCanonicalFlip } from "./entries/devafus
 import { entry as splitEngineeringLogPerEntry } from "./entries/split-engineering-log-per-entry";
 import { entry as coUkDomainPrivacyNotSupported } from "./entries/co-uk-domain-privacy-not-supported";
 import { entry as devafusionComEmailAuthentication } from "./entries/devafusion-com-email-authentication";
+import { entry as devafusionComSpfTxtRecordsetConflict } from "./entries/devafusion-com-spf-txt-recordset-conflict";
 
 export type { LogEntry } from "./types";
 
@@ -38,6 +39,7 @@ const allEntries = [
   splitEngineeringLogPerEntry,
   coUkDomainPrivacyNotSupported,
   devafusionComEmailAuthentication,
+  devafusionComSpfTxtRecordsetConflict,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
