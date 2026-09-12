@@ -53,7 +53,7 @@ export function BrandSocialImage() {
             x2="41"
             y2="27"
             stroke="#f8fafc"
-            strokeWidth="2.5"
+            strokeWidth="2.0"
           />
           <polygon points="12,27 16,24 16,30" fill="#f8fafc" />
           <polygon points="42,27 38,24 38,30" fill="#f8fafc" />
