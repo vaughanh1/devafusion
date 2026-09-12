@@ -15,6 +15,7 @@ import { entry as splitEngineeringLogPerEntry } from "./entries/split-engineerin
 import { entry as coUkDomainPrivacyNotSupported } from "./entries/co-uk-domain-privacy-not-supported";
 import { entry as devafusionComEmailAuthentication } from "./entries/devafusion-com-email-authentication";
 import { entry as devafusionComSpfTxtRecordsetConflict } from "./entries/devafusion-com-spf-txt-recordset-conflict";
+import { entry as devafusionBrandIconsAndManifest } from "./entries/devafusion-brand-icons-and-manifest";
 
 export type { LogEntry } from "./types";
 
@@ -40,6 +41,7 @@ const allEntries = [
   coUkDomainPrivacyNotSupported,
   devafusionComEmailAuthentication,
   devafusionComSpfTxtRecordsetConflict,
+  devafusionBrandIconsAndManifest,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

@@ -1,6 +1,10 @@
+import { BrandMark } from "@/components/brand/brand-mark";
+
 export default function HomePage() {
   return (
-    <section className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-6xl items-center px-6 py-20">
+    <section className="mx-auto flex min-h-[calc(100vh-9rem)] max-w-6xl flex-col items-start justify-center gap-10 px-6 py-20">
+      <BrandMark size="hero" />
+
       <div className="max-w-3xl">
         <p className="mb-4 text-sm font-medium uppercase tracking-[0.2em] text-muted">
           Software engineering · Cloud · Experiments
