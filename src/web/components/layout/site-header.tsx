@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandMark } from "@/components/brand/brand-mark";
 import { MainNavigation } from "@/components/navigation/main-navigation";
 
 export function SiteHeader() {
@@ -8,9 +9,9 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between px-6">
         <Link
           href="/"
-          className="text-lg font-semibold tracking-tight text-foreground"
+          className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          Devafusion
+          <BrandMark />
         </Link>
 
         <MainNavigation />
