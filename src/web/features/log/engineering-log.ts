@@ -16,6 +16,7 @@ import { entry as coUkDomainPrivacyNotSupported } from "./entries/co-uk-domain-p
 import { entry as devafusionComEmailAuthentication } from "./entries/devafusion-com-email-authentication";
 import { entry as devafusionComSpfTxtRecordsetConflict } from "./entries/devafusion-com-spf-txt-recordset-conflict";
 import { entry as devafusionBrandIconsAndManifest } from "./entries/devafusion-brand-icons-and-manifest";
+import { entry as devafusionBrandMarkStrokeWidthSync } from "./entries/devafusion-brand-mark-stroke-width-sync";
 
 export type { LogEntry } from "./types";
 
@@ -42,6 +43,7 @@ const allEntries = [
   devafusionComEmailAuthentication,
   devafusionComSpfTxtRecordsetConflict,
   devafusionBrandIconsAndManifest,
+  devafusionBrandMarkStrokeWidthSync,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
