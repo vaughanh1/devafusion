@@ -14,6 +14,7 @@ module "webapp" {
 
   app_settings = {
     NEXT_PUBLIC_GA_ID = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
+    DATABASE_URL      = "postgresql://devafusionadmin:${urlencode(data.azurerm_key_vault_secret.postgresql_admin_password.value)}@${module.postgresql.fqdn}:5432/postgres?sslmode=require"
   }
 
   tags = local.common_tags

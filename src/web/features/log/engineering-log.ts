@@ -19,6 +19,7 @@ import { entry as devafusionBrandIconsAndManifest } from "./entries/devafusion-b
 import { entry as devafusionBrandMarkStrokeWidthSync } from "./entries/devafusion-brand-mark-stroke-width-sync";
 import { entry as devafusionAboutContactSeoPresence } from "./entries/devafusion-about-contact-seo-presence";
 import { entry as aboutAndFooterUxCleanup } from "./entries/about-and-footer-ux-cleanup";
+import { entry as postgresqlFlexibleServerProvisioning } from "./entries/postgresql-flexible-server-provisioning";
 
 export type { LogEntry } from "./types";
 
@@ -48,6 +49,7 @@ const allEntries = [
   devafusionBrandMarkStrokeWidthSync,
   devafusionAboutContactSeoPresence,
   aboutAndFooterUxCleanup,
+  postgresqlFlexibleServerProvisioning,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

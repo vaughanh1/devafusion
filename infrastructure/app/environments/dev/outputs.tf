@@ -28,3 +28,11 @@ output "devafusion_co_uk_name_servers" {
   description = "Azure DNS name servers for devafusion.co.uk."
   value       = azurerm_dns_zone.devafusion_co_uk.name_servers
 }
+
+output "postgresql_server_name" {
+  value = module.postgresql.server_name
+}
+
+output "postgresql_fqdn" {
+  value = module.postgresql.fqdn
+}
