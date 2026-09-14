@@ -31,6 +31,12 @@ variable "budget_notification_emails" {
   type        = list(string)
 }
 
+variable "webhook_expiry_time" {
+  description = "Expiry timestamp for the budget-trigger webhook (RFC3339). Azure's Automation webhook API rejects an unbounded far-future value (e.g. a 2099 date returns a plain 'Invalid expiry time' 400 with no documented ceiling) - keep this bounded (10 years from creation here) and rotate it well before expiry, as a deliberate, tracked step, not an emergency."
+  type        = string
+  default     = "2036-12-31T00:00:00Z"
+}
+
 variable "tags" {
   type = map(string)
 }
