@@ -8,3 +8,5 @@ app_service_plan_sku = "B1"
 node_version         = "24-lts"
 
 web_app_name = "devafusion-dev"
+
+budget_notification_emails = ["alerts@devafusion.com"]

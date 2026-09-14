@@ -33,3 +33,8 @@ variable "web_app_name" {
   description = "Globally unique Azure Web App name."
   type        = string
 }
+
+variable "budget_notification_emails" {
+  description = "Email addresses notified by the PostgreSQL cost circuit breaker's budget alerts."
+  type        = list(string)
+}

@@ -1,10 +1,11 @@
 locals {
   location_short = "uks"
 
-  resource_group_name    = "rg-${var.product}-${var.environment}-${local.location_short}"
-  app_service_plan_name  = "asp-${var.product}-${var.environment}-${local.location_short}"
-  key_vault_name         = "kv-${var.product}-${var.environment}-${local.location_short}"
-  postgresql_server_name = "psql-${var.product}-${var.environment}-${local.location_short}"
+  resource_group_name     = "rg-${var.product}-${var.environment}-${local.location_short}"
+  app_service_plan_name   = "asp-${var.product}-${var.environment}-${local.location_short}"
+  key_vault_name          = "kv-${var.product}-${var.environment}-${local.location_short}"
+  postgresql_server_name  = "psql-${var.product}-${var.environment}-${local.location_short}"
+  automation_account_name = "aa-${var.product}-${var.environment}-${local.location_short}"
 
   primary_domain   = "devafusion.net"
   secondary_domain = "devafusion.com"
