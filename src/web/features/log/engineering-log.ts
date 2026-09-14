@@ -20,6 +20,7 @@ import { entry as devafusionBrandMarkStrokeWidthSync } from "./entries/devafusio
 import { entry as devafusionAboutContactSeoPresence } from "./entries/devafusion-about-contact-seo-presence";
 import { entry as aboutAndFooterUxCleanup } from "./entries/about-and-footer-ux-cleanup";
 import { entry as postgresqlFlexibleServerProvisioning } from "./entries/postgresql-flexible-server-provisioning";
+import { entry as postgresqlFirstRolloutBlockers } from "./entries/postgresql-first-rollout-blockers";
 
 export type { LogEntry } from "./types";
 
@@ -50,6 +51,7 @@ const allEntries = [
   devafusionAboutContactSeoPresence,
   aboutAndFooterUxCleanup,
   postgresqlFlexibleServerProvisioning,
+  postgresqlFirstRolloutBlockers,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
