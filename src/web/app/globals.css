@@ -4,11 +4,19 @@
   --background: #ffffff;
   --foreground: #171717;
   --surface: #f4f4f5;
-  --surface-border: #e4e4e7;
+  /*
+   * --surface-border and --muted are held to the same WCAG bars as the
+   * three named accessibility profiles below (3:1 UI borders/focus
+   * states, 7:1 body text) - verified against the real relative-luminance
+   * formula (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance), not
+   * eyeballed. The default (unset) theme is not exempt from that bar just
+   * because it is not one of the three explicit profiles.
+   */
+  --surface-border: #8f8f99;
   --accent: #0891b2;
   --accent-secondary: #7c3aed;
   --accent-foreground: #ffffff;
-  --muted: #71717a;
+  --muted: #52525b;
 }
 
 @theme inline {
@@ -29,11 +37,11 @@
     --background: #0a0a0f;
     --foreground: #e4e4e7;
     --surface: #13131a;
-    --surface-border: #23232e;
+    --surface-border: #60606e;
     --accent: #22d3ee;
     --accent-secondary: #a78bfa;
     --accent-foreground: #0a0a0f;
-    --muted: #8a8a99;
+    --muted: #a1a1ad;
   }
 }
 

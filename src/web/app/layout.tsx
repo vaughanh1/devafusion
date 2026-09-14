@@ -5,6 +5,7 @@ import { GoogleAnalytics } from "@/components/analytics/google-analytics";
 import { CookieBanner } from "@/components/consent/cookie-banner";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
+import { OrganizationSchema } from "@/components/seo/organization-schema";
 import { ThemeFlashGuard } from "@/components/theme/theme-flash-guard";
 
 import "./globals.css";
@@ -61,6 +62,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <ThemeFlashGuard />
+        <OrganizationSchema />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen flex-col antialiased`}
