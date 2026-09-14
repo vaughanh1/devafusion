@@ -1,3 +1,5 @@
+import Script from "next/script";
+
 import { primaryContactEmail, socialLinks } from "@/features/brand/social-links";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://devafusion.net";
@@ -19,8 +21,12 @@ export function OrganizationSchema() {
   };
 
   // Static, non-user-controlled JSON-LD payload - safe to inject directly.
+  // next/script (rather than a raw <script> tag) avoids the React-DOM dev
+  // warning about scripts never executing on the client - it also isn't
+  // meant to execute, since crawlers only ever read the SSR'd markup.
   return (
-    <script
+    <Script
+      id="organization-schema"
       type="application/ld+json"
       dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
     />

@@ -18,6 +18,7 @@ import { entry as devafusionComSpfTxtRecordsetConflict } from "./entries/devafus
 import { entry as devafusionBrandIconsAndManifest } from "./entries/devafusion-brand-icons-and-manifest";
 import { entry as devafusionBrandMarkStrokeWidthSync } from "./entries/devafusion-brand-mark-stroke-width-sync";
 import { entry as devafusionAboutContactSeoPresence } from "./entries/devafusion-about-contact-seo-presence";
+import { entry as aboutAndFooterUxCleanup } from "./entries/about-and-footer-ux-cleanup";
 
 export type { LogEntry } from "./types";
 
@@ -46,6 +47,7 @@ const allEntries = [
   devafusionBrandIconsAndManifest,
   devafusionBrandMarkStrokeWidthSync,
   devafusionAboutContactSeoPresence,
+  aboutAndFooterUxCleanup,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

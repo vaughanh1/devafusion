@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { SocialLinksRow } from "@/components/brand/social-links-row";
-import { legalContactEmail, primaryContactEmail } from "@/features/brand/social-links";
-
 export const metadata: Metadata = {
   title: "Software Engineering Rooted in Deva Victrix",
   description:
@@ -47,14 +44,24 @@ export default function AboutPage() {
 
       <div className="mt-4 border-l-2 border-surface-border bg-surface p-6 text-lg leading-8 text-muted">
         <p>
-          To understand devafusion&apos;s philosophy, trace it back past the
-          codebase to Chester, United Kingdom - once{" "}
-          <strong className="text-foreground">Deva Victrix</strong>, the
-          fortress city of the Roman Legion XX Valeria Victrix. The
-          Twentieth Legion&apos;s engineers didn&apos;t build temporary
-          camps; they engineered permanent infrastructure designed to
-          outlast centuries of pressure. That standard - build once, build
-          to endure - is the standard this practice holds itself to.
+          The name traces back to Chester, United Kingdom - once{" "}
+          <strong className="text-foreground">
+            <a
+              href="https://en.wikipedia.org/wiki/Deva_Victrix"
+              rel="noreferrer"
+              target="_blank"
+              className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
+            >
+              Deva Victrix
+            </a>
+          </strong>
+          , the fortress city of the Roman Legion XX Valeria Victrix. Its
+          engineers didn&apos;t build temporary camps; they built permanent
+          infrastructure designed to outlast centuries of pressure. That
+          same bias toward durable foundations shapes this practice&apos;s
+          own engineering choices, without treating any one stack or
+          decision as permanent - the tooling and technologies used here
+          keep evolving.
         </p>
 
         <p className="mt-4">The name is a deliberate, four-layer fusion:</p>
@@ -73,8 +80,8 @@ export default function AboutPage() {
           </li>
           <li>
             <strong className="text-foreground">Fusion</strong> - the
-            method. &quot;Dev a fusion&quot; - the practice of synthesizing
-            disparate technologies into one coherent, unified system.
+            method. &quot;Develop a Fusion&quot; - synthesizing disparate
+            technologies into one coherent, unified system.
           </li>
           <li>
             <strong className="text-foreground">.net</strong> - the
@@ -112,12 +119,14 @@ export default function AboutPage() {
       </div>
 
       <h2 className="mt-14 text-2xl font-semibold tracking-tight text-foreground">
-        Engineering Principles We Don&apos;t Compromise On
+        Engineering Principles
       </h2>
 
       <p className="mt-4 text-lg leading-8 text-muted">
-        Discipline isn&apos;t a slogan here - it&apos;s enforced by tooling,
-        not memory.
+        Discipline here is enforced by tooling, not memory - and it sits
+        alongside an agile, evolving practice: work ships in small vertical
+        slices, and the toolchain keeps being re-examined against newer
+        approaches rather than fixed in place.
       </p>
 
       <ul className="mt-6 space-y-4 text-lg leading-8 text-muted">
@@ -141,7 +150,7 @@ export default function AboutPage() {
           >
             engineering log
           </Link>
-          , which documents real incidents, not a marketing claim.
+          , documenting real incidents as they happened.
         </li>
         <li>
           <strong className="text-foreground">
@@ -206,44 +215,16 @@ export default function AboutPage() {
         for how this site itself is built and operated.
       </p>
 
-      <h2 className="mt-14 text-2xl font-semibold tracking-tight text-foreground">
-        Get in Touch
-      </h2>
-
-      <div className="mt-6 flex flex-col gap-6 text-lg leading-8 text-muted sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <p>
-            General enquiries:{" "}
-            <a
-              href={`mailto:${primaryContactEmail}`}
-              className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
-            >
-              {primaryContactEmail}
-            </a>
-          </p>
-          <p>
-            Privacy &amp; legal:{" "}
-            <a
-              href={`mailto:${legalContactEmail}`}
-              className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
-            >
-              {legalContactEmail}
-            </a>
-          </p>
-          <p>
-            Full contact details on the{" "}
-            <Link
-              href="/contact"
-              className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
-            >
-              Contact page
-            </Link>
-            .
-          </p>
-        </div>
-
-        <SocialLinksRow variant="labelled" />
-      </div>
+      <p className="mt-14 text-lg leading-8 text-muted">
+        Questions or feedback? See the{" "}
+        <Link
+          href="/contact"
+          className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
+        >
+          Contact page
+        </Link>
+        .
+      </p>
     </section>
   );
 }

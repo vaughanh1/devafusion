@@ -2,10 +2,13 @@
 // consumed by SiteFooter, the About page and the Contact page so the same
 // URLs and rel="me" identity-verification attribute never drift out of
 // sync between the three surfaces.
+export type SocialPlatform = "github" | "x" | "linkedin";
+
 export type SocialLink = {
   label: string;
   href: string;
   handle: string;
+  platform: SocialPlatform;
 };
 
 export const socialLinks: SocialLink[] = [
@@ -13,16 +16,19 @@ export const socialLinks: SocialLink[] = [
     label: "GitHub",
     href: "https://github.com/vaughanh1/devafusion",
     handle: "vaughanh1/devafusion",
+    platform: "github",
   },
   {
     label: "X",
     href: "https://x.com/devafusion",
     handle: "@devafusion",
+    platform: "x",
   },
   {
     label: "LinkedIn",
     href: "https://www.linkedin.com/in/vaughan-hodgson/",
     handle: "vaughan-hodgson",
+    platform: "linkedin",
   },
 ];
 

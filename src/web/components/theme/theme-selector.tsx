@@ -101,7 +101,12 @@ export function ThemeSelector() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:gap-6">
+    <details className="relative text-sm">
+      <summary className="min-h-11 list-none inline-flex cursor-pointer items-center border border-surface-border px-3 text-xs font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+        Theme
+      </summary>
+
+      <div className="absolute right-0 bottom-full z-10 mb-2 flex w-max flex-col gap-3 border border-surface-border bg-surface p-3 shadow-lg">
       <fieldset className="flex items-center gap-2">
         <legend className="sr-only">Colour theme</legend>
         {THEME_OPTIONS.map((option) => (
@@ -147,6 +152,7 @@ export function ThemeSelector() {
           </button>
         ))}
       </fieldset>
-    </div>
+      </div>
+    </details>
   );
 }

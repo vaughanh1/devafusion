@@ -1,3 +1,4 @@
+import { SocialPlatformIcon } from "@/components/brand/social-platform-icon";
 import { socialLinks } from "@/features/brand/social-links";
 
 type SocialLinksRowProps = {
@@ -17,20 +18,17 @@ export function SocialLinksRow({ variant = "compact" }: SocialLinksRowProps) {
             href={link.href}
             rel="me noreferrer"
             target="_blank"
+            aria-label={link.label}
             className={
               variant === "labelled"
                 ? "flex items-center gap-2 text-sm text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                : "text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                : "flex items-center gap-2 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             }
           >
+            <SocialPlatformIcon platform={link.platform} />
             {variant === "labelled" ? (
-              <>
-                <span aria-hidden="true">{link.label}</span>
-                <span className="text-muted">{link.handle}</span>
-              </>
-            ) : (
-              link.label
-            )}
+              <span className="text-muted">{link.handle}</span>
+            ) : null}
           </a>
         </li>
       ))}
