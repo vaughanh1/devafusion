@@ -24,6 +24,7 @@ import { entry as postgresqlFirstRolloutBlockers } from "./entries/postgresql-fi
 import { entry as postgresqlCostCircuitBreaker } from "./entries/postgresql-cost-circuit-breaker";
 import { entry as postgresqlZoneDriftAndAutomationProvider } from "./entries/postgresql-zone-drift-and-automation-provider";
 import { entry as automationWebhookExpiryTime } from "./entries/automation-webhook-expiry-time";
+import { entry as automationWebhookExpiryActualCeiling } from "./entries/automation-webhook-expiry-actual-ceiling";
 
 export type { LogEntry } from "./types";
 
@@ -58,6 +59,7 @@ const allEntries = [
   postgresqlCostCircuitBreaker,
   postgresqlZoneDriftAndAutomationProvider,
   automationWebhookExpiryTime,
+  automationWebhookExpiryActualCeiling,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
