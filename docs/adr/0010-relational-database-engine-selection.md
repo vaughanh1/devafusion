@@ -71,13 +71,14 @@ Accepted
   justifies it.
 - **A cost circuit breaker is required as a deliberate operational safety
   net**, independent of the tier's billing model: an Azure Budget on the
-  resource group (e.g. £30/month threshold) wired through an Action Group
+  resource group (£30/month threshold) wired through an Action Group
   to an Azure Automation Runbook that stops the Flexible Server at the
   100% threshold. This does not protect against a cost overrun that
   cannot actually occur from load alone (see Rationale), but it protects
   against a human or automation error that scales the tier up, and is
   cheap to provision (Automation/Action Groups are within Azure's free
-  tier at this usage volume).
+  tier at this usage volume). **Implemented** —
+  `infrastructure/app/modules/cost-circuit-breaker/`.
 - **Public network access must be firewall-restricted** to the App
   Service's known outbound IP and named admin IPs from day one —
   "Allow public access from any Azure service" must never be enabled, per

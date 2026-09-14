@@ -36,3 +36,11 @@ output "postgresql_server_name" {
 output "postgresql_fqdn" {
   value = module.postgresql.fqdn
 }
+
+output "cost_circuit_breaker_automation_account_name" {
+  value = module.postgresql_cost_circuit_breaker.automation_account_name
+}
+
+output "cost_circuit_breaker_action_group_id" {
+  value = module.postgresql_cost_circuit_breaker.action_group_id
+}
