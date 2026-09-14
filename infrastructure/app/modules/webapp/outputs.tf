@@ -19,3 +19,8 @@ output "custom_domain_verification_id" {
   value       = azurerm_linux_web_app.this.custom_domain_verification_id
   sensitive   = true
 }
+
+output "outbound_ip_address_list" {
+  description = "Outbound IP addresses this App Service actually uses - consumed by the PostgreSQL module's firewall rules so the database only trusts this app's real egress addresses (ADR-0010), never a wide-open range."
+  value       = azurerm_linux_web_app.this.outbound_ip_address_list
+}

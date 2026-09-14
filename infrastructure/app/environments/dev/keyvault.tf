@@ -40,3 +40,14 @@ data "azurerm_key_vault_secret" "google_analytics_ga4_devafusion" {
 
   depends_on = [module.keyvault]
 }
+
+# ADR-0004 / ADR-0010: this secret's value is created manually in Key
+# Vault as the one sanctioned manual step - Terraform only ever reads it
+# here, never writes it, so it can never be the thing that triggers a
+# purge/destroy of a live credential.
+data "azurerm_key_vault_secret" "postgresql_admin_password" {
+  name         = "postgresql-admin-password-devafusion"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}
