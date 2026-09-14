@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { legalContactEmail } from "@/features/brand/social-links";
+
 export const metadata: Metadata = {
   title: "Privacy & Cookies",
   description:
@@ -85,7 +87,14 @@ export default function LegalPage() {
         <div>
           <h2 className="text-xl font-semibold text-foreground">Questions</h2>
           <p className="mt-2">
-            For questions about this page, see the{" "}
+            For privacy or data questions, email{" "}
+            <a
+              href={`mailto:${legalContactEmail}`}
+              className="underline hover:text-foreground"
+            >
+              {legalContactEmail}
+            </a>{" "}
+            or see the{" "}
             <Link href="/contact" className="underline hover:text-foreground">
               contact page
             </Link>
