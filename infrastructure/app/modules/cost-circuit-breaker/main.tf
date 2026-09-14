@@ -52,12 +52,13 @@ resource "azurerm_role_assignment" "automation_can_stop_postgresql" {
 }
 
 # Webhooks are the documented mechanism for an Action Group to invoke a
-# specific Runbook with fixed parameters. Azure's webhook API rejects an
-# expiry_time set too far in the future (an unbounded value like a
-# 2099 date returns a plain "Invalid expiry time" 400 with no documented
-# ceiling given) - expiry_time is a var so the concrete date lives in the
-# environment's .tfvars, not hardcoded here, and rotating it well before
-# expiry is a deliberate, tracked operational task, not an accident.
+# specific Runbook with fixed parameters. Azure's webhook API silently caps
+# expiry_time at roughly 10 years from creation with no documented ceiling
+# anywhere in the REST reference (verified empirically - see the
+# webhook_expiry_time variable's description) - expiry_time is a var so the
+# concrete date lives in the environment's .tfvars, not hardcoded here, and
+# rotating it well before expiry is a deliberate, tracked operational task,
+# not an accident.
 resource "azurerm_automation_webhook" "stop_postgresql" {
   name                    = "stop-postgresql-budget-trigger"
   resource_group_name     = var.resource_group_name
