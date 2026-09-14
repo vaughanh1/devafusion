@@ -53,6 +53,12 @@ variable "administrator_password" {
   sensitive   = true
 }
 
+variable "zone" {
+  description = "Availability zone the server is pinned to. Azure auto-assigns one at creation if left unset in the API call, but changing this attribute afterwards forces a full resource replacement unless done via a high_availability standby-zone swap - so this must be pinned to the real, already-assigned zone once known, never left to drift silently."
+  type        = string
+  default     = "2"
+}
+
 variable "public_network_access_enabled" {
   description = "Whether the server has a public endpoint at all. Firewall rules further restrict which IPs may use it when true."
   type        = bool

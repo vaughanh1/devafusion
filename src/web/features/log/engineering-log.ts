@@ -22,6 +22,7 @@ import { entry as aboutAndFooterUxCleanup } from "./entries/about-and-footer-ux-
 import { entry as postgresqlFlexibleServerProvisioning } from "./entries/postgresql-flexible-server-provisioning";
 import { entry as postgresqlFirstRolloutBlockers } from "./entries/postgresql-first-rollout-blockers";
 import { entry as postgresqlCostCircuitBreaker } from "./entries/postgresql-cost-circuit-breaker";
+import { entry as postgresqlZoneDriftAndAutomationProvider } from "./entries/postgresql-zone-drift-and-automation-provider";
 
 export type { LogEntry } from "./types";
 
@@ -54,6 +55,7 @@ const allEntries = [
   postgresqlFlexibleServerProvisioning,
   postgresqlFirstRolloutBlockers,
   postgresqlCostCircuitBreaker,
+  postgresqlZoneDriftAndAutomationProvider,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
