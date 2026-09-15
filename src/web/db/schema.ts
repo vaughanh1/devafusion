@@ -1,9 +1,13 @@
-// Guards against this module (and drizzle-orm/pg with it) ever being
-// pulled into a client bundle - see docs/adr/0011 §Consequences for why
-// this matters once a form (registration/feedback/contact) imports a
-// drizzle-zod-derived schema for client-side validation.
-import "server-only";
-
+// No "server-only" guard here deliberately: drizzle-kit's CLI (generate/
+// migrate) requires this file directly via plain Node, outside Next.js's
+// bundler, so it never resolves the "react-server" export condition and
+// would hit server-only's hard throw unconditionally (found by actually
+// running `drizzle-kit generate` - it failed outright). The real leak
+// risk this guards against - a client component importing a
+// drizzle-zod-derived schema - is already covered at that narrower entry
+// point instead: see the "server-only" import in
+// features/log/schema/log-entries.zod.ts, which fires before this file
+// is ever reached in that import chain.
 import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 // Column shape mirrors src/web/features/log/types.ts's LogEntry exactly -

@@ -26,6 +26,7 @@ import { entry as postgresqlZoneDriftAndAutomationProvider } from "./entries/pos
 import { entry as automationWebhookExpiryTime } from "./entries/automation-webhook-expiry-time";
 import { entry as automationWebhookExpiryActualCeiling } from "./entries/automation-webhook-expiry-actual-ceiling";
 import { entry as drizzleOrmToolingSetup } from "./entries/drizzle-orm-tooling-setup";
+import { entry as localPostgresMigrationTesting } from "./entries/local-postgres-migration-testing";
 
 export type { LogEntry } from "./types";
 
@@ -62,6 +63,7 @@ const allEntries = [
   automationWebhookExpiryTime,
   automationWebhookExpiryActualCeiling,
   drizzleOrmToolingSetup,
+  localPostgresMigrationTesting,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
