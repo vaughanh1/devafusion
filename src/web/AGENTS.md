@@ -24,6 +24,16 @@ to this application.
 - **No Raw Script Tags:** Never inject raw `<script>` tags for tracking into the HTML head. Frontend tracking must leverage native Next.js framework libraries (e.g., `@next/third-parties`) so client-side route transitions are captured without resetting the user session. The one sanctioned exception is the fixed, literal flash-prevention script described in the Accessibility Theme Engine section — it exists specifically because it must run before any framework script loads.
 - **Explicit Server Error Handling:** All Next.js Server Components and server actions that perform data fetching or mutations must handle errors explicitly using `try/catch` blocks. Do not let unhandled promise rejections propagate; they can escape server telemetry hooks in a containerized environment.
 
+## Database, Schema Sharing & Future Forms
+
+- **Backend-first schema, never client-imported:** any Zod schema derived from a Drizzle table (`drizzle-zod`'s `createInsertSchema`/`createSelectSchema`, e.g. `db/schema.ts`, `features/*/schema/*.zod.ts`) must carry an `import "server-only"` guard at the top. This is deliberate (see `docs/adr/0011-drizzle-orm-and-repository-pattern.md`): the DB table stays the single source of truth for validation, but that schema module transitively pulls in `drizzle-orm`/`pg`, which must never reach a client bundle. A `server-only` import turns an accidental client-side import into a build failure, not a silent bundle-size regression.
+- **When the first real form is built (registration, feedback, contact — reCAPTCHA + MFA already on the roadmap):**
+  - Use a **Server Action** as the mutation path, colocated with its route, not a client-side `fetch` to a hand-rolled API route. The action file is server code by construction, so it can import the Drizzle-derived schema directly with zero bundle risk.
+  - **Server-side validation via the Drizzle-derived schema is the only authoritative check** — re-validate in the Server Action even if the client also validated; never trust client input.
+  - **Client-side validation is UX-only** and must not import the Drizzle-derived schema: use native HTML attributes (`required`, `type="email"`, `minLength`) for the common cases. If a rule genuinely has no DB equivalent (password-confirmation match, "reCAPTCHA token is present", a ToS-acceptance checkbox), write a small standalone Zod schema for it and compose (`.and()`/`.extend()`) with the server-side schema conceptually — do not replace the Drizzle-derived schema or duplicate its DB-derived constraints by hand.
+  - Surface validation/submission errors via `useActionState`, per the existing Explicit Server Error Handling rule — no unhandled rejections.
+  - Any reCAPTCHA secret key or MFA provider secret is sourced from Key Vault at runtime (root AGENTS.md, Zero Hardcoded Secrets) — only a reCAPTCHA *site key* (public by design) is ever eligible for the `NEXT_PUBLIC_` prefix below.
+
 ## Environment Variables
 
 - **Server-side variables** (no prefix, e.g. `DATABASE_URL`) stay in the Node.js process and are never bundled into browser JavaScript. A check for `undefined` before use is sufficient.
