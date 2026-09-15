@@ -83,6 +83,21 @@ Accepted
   `python3` is preinstalled on the `ubuntu-latest` hosted image, so no
   new dependency was needed.
 
+- **Retry with exponential backoff around `drizzle-kit migrate` itself,
+  not a blind fixed sleep after opening the firewall rule.** Confirmed
+  as a real failure on the first actual production run of this
+  pipeline: `az postgres flexible-server firewall-rule create` returns
+  success as soon as Azure accepts the request, well before the rule
+  has actually propagated - Microsoft's own docs state firewall
+  configuration changes "can take up to five minutes." `drizzle-kit
+  migrate` connected immediately afterward and failed fast (~270ms) on
+  what is consistent with a network-level rejection, not a timeout. A
+  bounded retry loop (6 attempts, 10s initial delay doubling each time,
+  ~5 minutes total worst case matching Microsoft's documented figure)
+  wraps the migrate call, since propagation is frequently much faster
+  than the worst case in practice and a blind fixed sleep would always
+  pay the worst-case cost.
+
 ## Considered Options
 - **`git diff HEAD^ HEAD`-based gate on the migrate sequence** -
   rejected; see Rationale (silent, permanent drift on any single
@@ -128,19 +143,20 @@ Accepted
   (git tag or REST API query - see Considered Options) to restore
   skip-when-nothing-pending behaviour without reintroducing the
   correctness gap the original `HEAD^ HEAD` gate had.
-- **`sc-devafusion-terraform`'s exact firewall-rule RBAC permission is
-  inferred, not directly confirmed** - the custom Terraform deployment
-  role's `Microsoft.DBforPostgreSQL/flexibleServers/*` wildcard
-  (extended during the cost-circuit-breaker slice) should cover the
-  child `firewallRules` action, consistent with this project's existing
-  wildcard-per-resource-type convention, but this has not been proven
-  by an actual run under that identity - watch the first real
-  `ApplyMigration` run closely for an RBAC-denied error on the
-  firewall-rule create/delete steps specifically.
+- **`sc-devafusion-terraform`'s firewall-rule RBAC permission is now
+  confirmed, not just inferred** - the firewall rule create/delete
+  steps both succeeded on the first real `ApplyMigration` run (the
+  migrate step itself is what failed, on firewall-rule propagation
+  delay - see the retry-with-backoff rationale above), proving the
+  custom Terraform deployment role's `Microsoft.DBforPostgreSQL/
+  flexibleServers/*` wildcard does cover the child `firewallRules`
+  action as expected.
 - The identity/MFA schema from ADR-0012
   (`0000_better_auth_identity_and_mfa.sql`) is the first migration this
-  pipeline will actually apply to the live server - not yet run as of
-  this ADR.
+  pipeline will actually apply to the live server - the first real run
+  failed on firewall-rule propagation delay (now fixed with retry
+  logic above), so it has still not yet successfully applied as of
+  this revision.
 - Every future schema change follows the same path automatically: land
   a new `drizzle-kit generate`-produced file under `src/web/drizzle/`,
   merge, review the printed SQL in the triggering CI run, approve the

@@ -103,7 +103,31 @@ stages:
                     encodedPassword=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$PG_ADMIN_PASSWORD")
                     export DATABASE_URL="postgresql://devafusionadmin:${encodedPassword}@$(postgresqlFqdn):5432/postgres?sslmode=require"
 
-                    npm run db:migrate
+                    # Microsoft's own docs: "Changes to the firewall
+                    # configuration of an Azure Database for PostgreSQL
+                    # flexible server can take up to five minutes."
+                    # Observed on the first real run of this pipeline:
+                    # az firewall-rule create returns success as soon as
+                    # Azure accepts the request, well before the rule
+                    # has actually propagated - drizzle-kit migrate then
+                    # connected immediately afterward and got a fast
+                    # network-level rejection. Retry with backoff up to
+                    # that documented worst case rather than a blind
+                    # sleep, since propagation is often much faster in
+                    # practice.
+                    maxAttempts=6
+                    delaySeconds=10
+                    attempt=1
+                    until npm run db:migrate; do
+                      if [ "$attempt" -ge "$maxAttempts" ]; then
+                        echo "drizzle-kit migrate failed after ${attempt} attempts (~5 minutes) - giving up. This may be a real migration/SQL error, not a firewall propagation delay - check the output above."
+                        exit 1
+                      fi
+                      echo "drizzle-kit migrate failed (attempt ${attempt}/${maxAttempts}) - likely firewall-rule propagation delay, retrying in ${delaySeconds}s..."
+                      sleep "$delaySeconds"
+                      attempt=$((attempt + 1))
+                      delaySeconds=$((delaySeconds * 2))
+                    done
                   displayName: Run drizzle-kit migrate
                   env:
                     # postgresql-admin-password-devafusion (hyphens
