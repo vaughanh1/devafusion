@@ -69,6 +69,34 @@ stages:
               ./scripts/ci/gitleaks-scan.sh
             displayName: Scan for secrets (gitleaks)
 
+          # CD's ApplyMigration stage runs `drizzle-kit migrate`
+          # unconditionally on every run (it is idempotent - it reads
+          # __drizzle_migrations from the live database itself and only
+          # applies whatever isn't already recorded there), so this step
+          # is purely informational: it prints every migration file
+          # currently in the repo so an approver reviewing CD's manual
+          # approval gate can see the full current set of SQL, without
+          # this pipeline needing to guess which ones are "new" via a
+          # fragile git-diff comparison. Zero Azure/DB access here.
+          - script: |
+              set -euo pipefail
+
+              sqlFiles=$(find src/web/drizzle -maxdepth 1 -name '*.sql' | sort)
+
+              if [ -z "$sqlFiles" ]; then
+                echo "No migration files under src/web/drizzle/."
+                exit 0
+              fi
+
+              echo "===== Migration SQL currently in the repo (CD applies any not yet recorded in __drizzle_migrations) ====="
+              for f in $sqlFiles; do
+                echo "--- $f ---"
+                cat "$f"
+                echo ""
+              done
+              echo "================================================================"
+            displayName: Print current migration SQL for review
+
           - task: UseNode@1
             displayName: Install Node.js 24
             inputs:
