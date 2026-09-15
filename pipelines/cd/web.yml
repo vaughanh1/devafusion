@@ -17,10 +17,142 @@ resources:
 variables:
   webAppName: "devafusion-dev"
   resourceGroupName: "rg-devafusion-dev-uks"
+  # This pipeline deliberately never runs Terraform (separate web/infra
+  # pipelines, ADR-0003), so these can't come from `terraform output`
+  # the way the infrastructure CD pipeline's restart step does - they
+  # stay as named, labelled literals, same precedent as webAppName.
+  postgresqlServerName: "psql-devafusion-dev-uks"
+  postgresqlFqdn: "psql-devafusion-dev-uks.postgres.database.azure.com"
+  keyVaultName: "kv-devafusion-dev-uks"
 
 stages:
+  # Schema migrations are rare (unlike app deploys, which happen on
+  # nearly every merge) - gated on whether src/web/drizzle/** actually
+  # changed, detected and gated entirely within this one job (no
+  # cross-stage output-variable condition - that specific Azure
+  # Pipelines expression syntax could not be verified against an
+  # authoritative Microsoft example, and this job touches a live
+  # production database, so an unverified condition is not an
+  # acceptable risk here). The devafusion-dev-migrations environment's
+  # manual approval check (configured in Azure DevOps's UI, not this
+  # YAML - infrastructure/AGENTS.md) pauses this job before any step
+  # runs - the exact pending SQL was already printed in the triggering
+  # CI run (pipelines/ci/web.yml's "Preview pending database migration"
+  # step), so the approver has something to review before approving.
+  - stage: ApplyMigration
+    displayName: Apply pending database migration
+
+    jobs:
+      - deployment: RunMigration
+        displayName: Detect and run drizzle-kit migrate
+        environment: devafusion-dev-migrations
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                  fetchDepth: 2 # Needed for `git diff HEAD^ HEAD` below.
+
+                - script: |
+                    set -euo pipefail
+
+                    if git diff --name-only HEAD^ HEAD -- src/web/drizzle/ | grep -q '\.sql$'; then
+                      echo "src/web/drizzle/** changed - migration required."
+                      echo "##vso[task.setvariable variable=migrationPending]true"
+                    else
+                      echo "No changes under src/web/drizzle/**/*.sql - skipping migration."
+                      echo "##vso[task.setvariable variable=migrationPending]false"
+                    fi
+                  displayName: Detect whether a migration is pending
+
+                - task: AzureKeyVault@2
+                  displayName: Fetch PostgreSQL admin password from Key Vault
+                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    KeyVaultName: "$(keyVaultName)"
+                    SecretsFilter: "postgresql-admin-password-devafusion"
+
+                - task: AzureCLI@2
+                  displayName: Open a temporary, named firewall rule for this agent
+                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      agentIp=$(curl -s https://api.ipify.org)
+                      echo "Agent IP: $agentIp"
+
+                      az postgres flexible-server firewall-rule create \
+                        --resource-group "$(resourceGroupName)" \
+                        --server-name "$(postgresqlServerName)" \
+                        --name cd-agent-temp \
+                        --start-ip-address "$agentIp" \
+                        --end-ip-address "$agentIp"
+
+                - task: UseNode@1
+                  displayName: Install Node.js 24
+                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
+                  inputs:
+                    version: "24.x"
+
+                - script: |
+                    set -euo pipefail
+
+                    cd "$(Build.SourcesDirectory)/src/web"
+
+                    npm ci
+
+                    # Percent-encode the password before building the
+                    # connection string - it may contain characters (@,
+                    # :, /, %) that would otherwise corrupt the URL,
+                    # exactly why web.tf's own DATABASE_URL app_setting
+                    # already runs urlencode(). python3 is preinstalled
+                    # on the ubuntu-latest image.
+                    encodedPassword=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$PG_ADMIN_PASSWORD")
+                    export DATABASE_URL="postgresql://devafusionadmin:${encodedPassword}@$(postgresqlFqdn):5432/postgres?sslmode=require"
+
+                    npm run db:migrate
+                  displayName: Run drizzle-kit migrate
+                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
+                  env:
+                    # postgresql-admin-password-devafusion (hyphens
+                    # preserved, AzureKeyVault@2's own documented
+                    # behaviour) is set by the fetch step above - piped
+                    # through an env var here (never echoed) rather than
+                    # interpolated directly into YAML, so it never
+                    # appears unencoded in a rendered connection string.
+                    PG_ADMIN_PASSWORD: "$(postgresql-admin-password-devafusion)"
+
+                # Always runs when the firewall rule was actually opened
+                # above, regardless of whether the migration itself
+                # succeeded or failed - a failed migration must never
+                # leave a stray firewall rule behind. Never runs on a
+                # normal skip, where no rule was ever created and
+                # deleting a nonexistent one would itself fail the job.
+                - task: AzureCLI@2
+                  displayName: Close the temporary firewall rule
+                  condition: and(always(), eq(variables['migrationPending'], 'true'))
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      az postgres flexible-server firewall-rule delete \
+                        --resource-group "$(resourceGroupName)" \
+                        --server-name "$(postgresqlServerName)" \
+                        --name cd-agent-temp \
+                        --yes
+
   - stage: Web
     displayName: Deploy web application
+    dependsOn: ApplyMigration
 
     jobs:
       - deployment: DeployWeb

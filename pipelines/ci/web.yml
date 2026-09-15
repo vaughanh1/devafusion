@@ -62,12 +62,42 @@ stages:
 
         steps:
           - checkout: self
+            fetchDepth: 2 # Needed for `git diff HEAD^ HEAD` below.
 
           - script: |
               set -euo pipefail
               chmod +x scripts/ci/gitleaks-scan.sh
               ./scripts/ci/gitleaks-scan.sh
             displayName: Scan for secrets (gitleaks)
+
+          # Prints the exact pending migration SQL here, in CI, well
+          # before CD's ApplyMigration stage ever runs - the manual
+          # approval gate on that stage's environment (Azure DevOps UI,
+          # not this YAML - infrastructure/AGENTS.md) is only meaningful
+          # if the approver can already see what will run before
+          # approving. Zero Azure/DB access happens in this step.
+          - script: |
+              set -euo pipefail
+
+              changedFiles=$(git diff --name-only HEAD^ HEAD -- src/web/drizzle/ | grep '\.sql$' || true)
+
+              if [ -z "$changedFiles" ]; then
+                echo "No changes under src/web/drizzle/**/*.sql - no migration pending."
+                exit 0
+              fi
+
+              echo "The following migration file(s) changed and are pending:"
+              echo "$changedFiles"
+              echo ""
+              echo "===== Pending migration SQL (exact content CD will run) ====="
+              for f in $changedFiles; do
+                echo "--- $f ---"
+                cat "$f"
+                echo ""
+              done
+              echo "================================================================"
+              echo "##[warning]A database migration is pending - review the SQL above before approving the ApplyMigration stage in the CD pipeline."
+            displayName: Preview pending database migration (if any)
 
           - task: UseNode@1
             displayName: Install Node.js 24
