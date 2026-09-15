@@ -48,3 +48,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# drizzle - generated migration snapshots/journal are committed
+# deliberately (they are the reviewable migration history); only the
+# build-time OpenAPI artifact is a throwaway generated file
+openapi-docs.json

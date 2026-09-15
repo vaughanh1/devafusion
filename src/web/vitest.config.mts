@@ -11,6 +11,15 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./", import.meta.url)),
+      // Vitest runs in a plain Node/jsdom environment, not Next.js's own
+      // bundler, so it never resolves server-only's "react-server" export
+      // condition (which Next uses to swap in this exact no-op file at
+      // build time). Alias it directly so DB/repository tests can still
+      // import server-only-guarded modules without the package's real
+      // index.js throwing outside of a genuine Server Component context.
+      "server-only": fileURLToPath(
+        new URL("./node_modules/server-only/empty.js", import.meta.url),
+      ),
     },
   },
   test: {

@@ -28,4 +28,6 @@ specific to this infrastructure.
 
 ## PostgreSQL
 
-- Maintain strict schema integrity. Never modify database shapes or tables without generating an explicit, trackable migration file first. (No PostgreSQL instance exists in this repository yet — this rule takes effect the moment one is introduced.)
+- **Live instance, tooling-only so far:** the Flexible Server (`docs/adr/0010-relational-database-engine-selection.md`) and its cost circuit breaker are provisioned and live. Drizzle ORM/`drizzle-kit` tooling and a repository-pattern data-access layer are built (`docs/adr/0011-drizzle-orm-and-repository-pattern.md`, `src/web/db/`, `src/web/features/log/`), proven against an in-memory PGlite instance, and not yet wired to any real data or CD step.
+- **Maintain strict schema integrity:** never modify `src/web/db/schema.ts` (or any future table definition) without running `npm run db:generate` (`drizzle-kit generate`) to produce a trackable, versioned migration file under `src/web/drizzle/` first. Never hand-edit a generated migration file after the fact, and never modify the live database's shape through any channel other than `npm run db:migrate` (`drizzle-kit migrate`) applying those generated files — this is the PostgreSQL-specific instance of the root Idempotency rule.
+- **No CD pipeline migration step yet:** `drizzle-kit migrate` running as a `pipelines/cd/web.yml` step (before app deploy) is deliberately deferred to a following slice — introducing it is a distinct, loggable change, not an implicit side effect of adding a new table.
