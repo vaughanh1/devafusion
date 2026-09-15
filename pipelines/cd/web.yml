@@ -26,25 +26,28 @@ variables:
   keyVaultName: "kv-devafusion-dev-uks"
 
 stages:
-  # Schema migrations are rare (unlike app deploys, which happen on
-  # nearly every merge) - gated on whether src/web/drizzle/** actually
-  # changed, detected and gated entirely within this one job (no
-  # cross-stage output-variable condition - that specific Azure
-  # Pipelines expression syntax could not be verified against an
-  # authoritative Microsoft example, and this job touches a live
-  # production database, so an unverified condition is not an
-  # acceptable risk here). The devafusion-dev-migrations environment's
-  # manual approval check (configured in Azure DevOps's UI, not this
-  # YAML - infrastructure/AGENTS.md) pauses this job before any step
-  # runs - the exact pending SQL was already printed in the triggering
-  # CI run (pipelines/ci/web.yml's "Preview pending database migration"
-  # step), so the approver has something to review before approving.
+  # Runs unconditionally on every CD run - deliberately not gated on
+  # whether src/web/drizzle/** changed. `drizzle-kit migrate` is
+  # idempotent (it reads __drizzle_migrations from the live database
+  # and only applies whatever isn't already recorded there), so an
+  # ordinary deploy with no new migration just pays the fixed
+  # firewall-rule open/close cost and finds nothing to do. A git-diff
+  # gate was considered and rejected: comparing only against the
+  # immediately preceding commit permanently loses track of a pending
+  # migration if any single CD run is ever rejected at the approval
+  # gate below, times out, or fails downstream - silent drift with no
+  # error. The devafusion-dev-migrations environment's manual approval
+  # check (configured in Azure DevOps's UI, not this YAML -
+  # infrastructure/AGENTS.md) pauses this job before any step runs -
+  # the current migration SQL was already printed in the triggering CI
+  # run (pipelines/ci/web.yml's "Print current migration SQL for
+  # review" step), so the approver has something to review first.
   - stage: ApplyMigration
     displayName: Apply pending database migration
 
     jobs:
       - deployment: RunMigration
-        displayName: Detect and run drizzle-kit migrate
+        displayName: Run drizzle-kit migrate
         environment: devafusion-dev-migrations
 
         strategy:
@@ -52,23 +55,9 @@ stages:
             deploy:
               steps:
                 - checkout: self
-                  fetchDepth: 2 # Needed for `git diff HEAD^ HEAD` below.
-
-                - script: |
-                    set -euo pipefail
-
-                    if git diff --name-only HEAD^ HEAD -- src/web/drizzle/ | grep -q '\.sql$'; then
-                      echo "src/web/drizzle/** changed - migration required."
-                      echo "##vso[task.setvariable variable=migrationPending]true"
-                    else
-                      echo "No changes under src/web/drizzle/**/*.sql - skipping migration."
-                      echo "##vso[task.setvariable variable=migrationPending]false"
-                    fi
-                  displayName: Detect whether a migration is pending
 
                 - task: AzureKeyVault@2
                   displayName: Fetch PostgreSQL admin password from Key Vault
-                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
                   inputs:
                     azureSubscription: sc-devafusion-terraform
                     KeyVaultName: "$(keyVaultName)"
@@ -76,7 +65,6 @@ stages:
 
                 - task: AzureCLI@2
                   displayName: Open a temporary, named firewall rule for this agent
-                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
                   inputs:
                     azureSubscription: sc-devafusion-terraform
                     scriptType: bash
@@ -96,7 +84,6 @@ stages:
 
                 - task: UseNode@1
                   displayName: Install Node.js 24
-                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
                   inputs:
                     version: "24.x"
 
@@ -118,7 +105,6 @@ stages:
 
                     npm run db:migrate
                   displayName: Run drizzle-kit migrate
-                  condition: and(succeeded(), eq(variables['migrationPending'], 'true'))
                   env:
                     # postgresql-admin-password-devafusion (hyphens
                     # preserved, AzureKeyVault@2's own documented
@@ -128,15 +114,12 @@ stages:
                     # appears unencoded in a rendered connection string.
                     PG_ADMIN_PASSWORD: "$(postgresql-admin-password-devafusion)"
 
-                # Always runs when the firewall rule was actually opened
-                # above, regardless of whether the migration itself
-                # succeeded or failed - a failed migration must never
-                # leave a stray firewall rule behind. Never runs on a
-                # normal skip, where no rule was ever created and
-                # deleting a nonexistent one would itself fail the job.
+                # Always runs, regardless of whether the migration
+                # itself succeeded or failed - a failed migration must
+                # never leave a stray firewall rule behind.
                 - task: AzureCLI@2
                   displayName: Close the temporary firewall rule
-                  condition: and(always(), eq(variables['migrationPending'], 'true'))
+                  condition: always()
                   inputs:
                     azureSubscription: sc-devafusion-terraform
                     scriptType: bash
