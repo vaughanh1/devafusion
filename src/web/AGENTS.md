@@ -34,6 +34,28 @@ to this application.
   - Surface validation/submission errors via `useActionState`, per the existing Explicit Server Error Handling rule — no unhandled rejections.
   - Any reCAPTCHA secret key or MFA provider secret is sourced from Key Vault at runtime (root AGENTS.md, Zero Hardcoded Secrets) — only a reCAPTCHA *site key* (public by design) is ever eligible for the `NEXT_PUBLIC_` prefix below.
 
+## Local Postgres for Migration Testing
+
+- **`drizzle-kit migrate` has no local target by default** — the only real Postgres this project has is the firewalled Azure Flexible Server, and PGlite (used inside Vitest, `features/log/__tests__/`) is a WASM reimplementation, not the literal engine that will run a migration in production. Never treat a PGlite-only pass as proof a migration is safe to ship.
+- **Before pushing any change under `src/web/drizzle/**`, run the migration locally against real Docker Postgres, pinned to the same major version as the live server** (`postgres_version = "16"` in `infrastructure/app/modules/postgresql/variables.tf` — check that file if it ever changes, don't assume 16):
+  ```
+  docker run --name devafusion-postgres-local --rm -e POSTGRES_PASSWORD=localdev -p 5432:5432 -d postgres:16
+  ```
+- Point `DATABASE_URL` at it for the duration of the check, then run the real script:
+  ```
+  # PowerShell
+  $env:DATABASE_URL = "postgresql://postgres:localdev@localhost:5432/postgres"
+  npm run db:migrate
+  ```
+  ```
+  # bash
+  export DATABASE_URL="postgresql://postgres:localdev@localhost:5432/postgres"
+  npm run db:migrate
+  ```
+- Inspect the result with `docker exec -it devafusion-postgres-local psql -U postgres -c "\d log_entries"` (or any Postgres client pointed at `localhost:5432`) before trusting the migration file.
+- `docker stop devafusion-postgres-local` when done — `--rm` above means it's discarded automatically, so nothing lingers between checks; each run starts from a clean, empty database, matching what a first-time `migrate` against a genuinely new table will actually see.
+- This is the same "prove it against something real before it ever runs unattended in CD" posture already established for Terraform (`terraform plan`/`validate` were never trusted alone for this project's Azure-specific gaps — see the PostgreSQL zone-pinning and webhook-expiry-ceiling incidents) — a migration is Postgres's equivalent of an infrastructure change and deserves the same scepticism.
+
 ## Environment Variables
 
 - **Server-side variables** (no prefix, e.g. `DATABASE_URL`) stay in the Node.js process and are never bundled into browser JavaScript. A check for `undefined` before use is sufficient.
