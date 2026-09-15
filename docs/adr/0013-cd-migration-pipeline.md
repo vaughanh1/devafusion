@@ -153,6 +153,49 @@ Accepted
   such flag exists; printing the current migration SQL in CI is the
   closest equivalent available.
 
+## Correction: the second failure's true root cause was not firewall propagation
+The retry-with-backoff fix above did not resolve the failure. A second
+production run retried all 6 attempts over ~5m38s with the exact same
+fast (~500ms-1s), no-error failure pattern every single time - if
+firewall propagation were the cause, at least one retry should have
+succeeded once the rule settled. It didn't, and this was compounded by
+separately observing the *same server's* firewall rules taking closer
+to ~10 minutes to propagate during a live Terraform apply, which would
+have made the original 5-minute retry budget too short regardless.
+
+The actual root cause, found by bypassing `drizzle-kit`'s CLI (which
+reliably swallows the real exception behind its terminal spinner, in
+every environment, not just CI) with `drizzle-orm`'s own `migrate()`
+function called directly: a genuine PostgreSQL error, `type "citext"
+does not exist`. `azurerm_postgresql_flexible_server_configuration`'s
+`azure.extensions = "CITEXT"` (`infrastructure/app/modules/postgresql/
+main.tf`) only allowlists the extension server-wide - it does **not**
+run `CREATE EXTENSION citext;` inside any specific database. Confirmed
+directly by querying `pg_extension` on the live server: only
+`plpgsql`/`pgaadauth`/`azure` existed; `citext` never had been created.
+Firewall propagation and the SSL deprecation warning were both real
+observations from the earlier failure's log, but neither was ever the
+actual cause - the migration failed identically even from an IP
+allowlisted for over a day, ruling out firewall state entirely, once
+tested directly.
+
+Fixed by adding a `CREATE EXTENSION IF NOT EXISTS citext;` step
+(idempotent, safe on every run) immediately before `drizzle-kit
+migrate`, using the same `pg` package already available after `npm
+ci` rather than introducing `psql` as an unverified new dependency on
+the pipeline's hosted agent. Verified end-to-end against the live
+server directly from this session (not just re-running the pipeline):
+`drizzle-kit migrate` printed "migrations applied successfully!" and
+the five expected tables (`account`, `session`, `user`,
+`user_security`, `verification`) were confirmed to exist via a direct
+query immediately afterward.
+
+The retry-with-backoff logic is kept, not removed, since the ~10-minute
+propagation delay separately observed via Terraform's own apply log is
+real and independent of this fix - it protects against a genuinely
+different failure mode that just happened not to be the one that
+occurred here.
+
 ## Security note
 During diagnosis of the first failed run, the live PostgreSQL admin
 password was inadvertently displayed in plaintext in an interactive
@@ -192,11 +235,13 @@ already treats as externally managed, per ADR-0004/ADR-0010).
   flexibleServers/*` wildcard does cover the child `firewallRules`
   action as expected.
 - The identity/MFA schema from ADR-0012
-  (`0000_better_auth_identity_and_mfa.sql`) is the first migration this
-  pipeline will actually apply to the live server - the first real run
-  failed on firewall-rule propagation delay (now fixed with retry
-  logic above), so it has still not yet successfully applied as of
-  this revision.
+  (`0000_better_auth_identity_and_mfa.sql`) has now actually applied to
+  the live server - confirmed directly (not via the pipeline, which
+  has not yet been re-run with this fix) during diagnosis: all five
+  expected tables exist. The pipeline itself still needs a successful
+  end-to-end run to confirm the `CREATE EXTENSION` fix works
+  unattended, under the CD service connection's identity, not just
+  from this author's already-migrated database state.
 - Every future schema change follows the same path automatically: land
   a new `drizzle-kit generate`-produced file under `src/web/drizzle/`,
   merge, review the printed SQL in the triggering CI run, approve the
