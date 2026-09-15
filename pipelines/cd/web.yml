@@ -101,7 +101,10 @@ stages:
                     # already runs urlencode(). python3 is preinstalled
                     # on the ubuntu-latest image.
                     encodedPassword=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$PG_ADMIN_PASSWORD")
-                    export DATABASE_URL="postgresql://devafusionadmin:${encodedPassword}@$(postgresqlFqdn):5432/postgres?sslmode=require"
+                    # sslmode=verify-full pinned explicitly, mirroring
+                    # infrastructure/app/environments/dev/web.tf's own
+                    # DATABASE_URL - see that file's comment for why.
+                    export DATABASE_URL="postgresql://devafusionadmin:${encodedPassword}@$(postgresqlFqdn):5432/postgres?sslmode=verify-full"
 
                     # Microsoft's own docs: "Changes to the firewall
                     # configuration of an Azure Database for PostgreSQL

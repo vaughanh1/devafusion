@@ -13,8 +13,14 @@ module "webapp" {
   health_check_eviction_time_in_min = 2
 
   app_settings = {
-    NEXT_PUBLIC_GA_ID  = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
-    DATABASE_URL       = "postgresql://devafusionadmin:${urlencode(data.azurerm_key_vault_secret.postgresql_admin_password.value)}@${module.postgresql.fqdn}:5432/postgres?sslmode=require"
+    NEXT_PUBLIC_GA_ID = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
+    # sslmode=verify-full pinned explicitly, not left as sslmode=require:
+    # pg-connection-string currently treats require/prefer/verify-ca as
+    # aliases for verify-full, but its own deprecation warning states
+    # this will change to weaker libpq semantics in v3.0.0/pg v9.0.0 -
+    # pinning now preserves today's actual security behaviour (full
+    # certificate + hostname verification) against that future bump.
+    DATABASE_URL       = "postgresql://devafusionadmin:${urlencode(data.azurerm_key_vault_secret.postgresql_admin_password.value)}@${module.postgresql.fqdn}:5432/postgres?sslmode=verify-full"
     MFA_ENCRYPTION_KEY = data.azurerm_key_vault_secret.mfa_encryption_key.value
     BETTER_AUTH_SECRET = data.azurerm_key_vault_secret.better_auth_secret.value
     # Canonical domain (ADR-0008), not the raw *.azurewebsites.net

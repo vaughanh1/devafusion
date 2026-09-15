@@ -84,19 +84,42 @@ Accepted
   new dependency was needed.
 
 - **Retry with exponential backoff around `drizzle-kit migrate` itself,
-  not a blind fixed sleep after opening the firewall rule.** Confirmed
-  as a real failure on the first actual production run of this
-  pipeline: `az postgres flexible-server firewall-rule create` returns
-  success as soon as Azure accepts the request, well before the rule
-  has actually propagated - Microsoft's own docs state firewall
-  configuration changes "can take up to five minutes." `drizzle-kit
-  migrate` connected immediately afterward and failed fast (~270ms) on
-  what is consistent with a network-level rejection, not a timeout. A
-  bounded retry loop (6 attempts, 10s initial delay doubling each time,
-  ~5 minutes total worst case matching Microsoft's documented figure)
-  wraps the migrate call, since propagation is frequently much faster
-  than the worst case in practice and a blind fixed sleep would always
-  pay the worst-case cost.
+  not a blind fixed sleep after opening the firewall rule.** The first
+  actual production run of this pipeline failed after ~270ms with no
+  further detail (drizzle-kit's terminal spinner overwrites the line
+  where a real Node error/stack trace would otherwise print, and none
+  appeared in the raw Azure DevOps log fetched directly via `az
+  devops`/REST API - `Bash exited with code '1'` was the only concrete
+  signal). Firewall-rule propagation delay is the best-supported
+  explanation, not a certainty: Microsoft's own docs state firewall
+  configuration changes "can take up to five minutes," `az ... create`
+  returns success as soon as Azure accepts the request rather than once
+  propagated, and a direct `pg` connection test from a long-allowlisted
+  IP (this author's machine, not the CD agent) succeeded immediately
+  with full `rejectUnauthorized: true` TLS verification - ruling out
+  the SSL warning in the log (see below) as the cause, and leaving
+  propagation delay as the only remaining explanation consistent with
+  the evidence, though the CD agent's exact fresh-rule scenario was not
+  directly reproduced. A bounded retry loop (6 attempts, 10s initial
+  delay doubling each time, ~5 minutes total worst case matching
+  Microsoft's documented figure) wraps the migrate call, since
+  propagation is frequently much faster than the worst case in
+  practice and a blind fixed sleep would always pay the worst-case
+  cost.
+- **Pinned `sslmode=verify-full` explicitly, in both `web.tf`'s
+  `DATABASE_URL` app_setting and this pipeline's own connection string -
+  previously both used `sslmode=require`.** The first failed run's log
+  carried a `pg-connection-string` deprecation warning: `require`,
+  `prefer`, and `verify-ca` are *currently* treated as aliases for
+  `verify-full` (full certificate-chain + hostname verification), but
+  this will change to weaker libpq semantics in `pg-connection-string`
+  v3.0.0/`pg` v9.0.0. Initially treated as a candidate root cause for
+  the failure (plausible, since a `verify-full`-style handshake failing
+  would also produce a fast, sub-second failure) but ruled out by the
+  direct connection test above. Still fixed regardless, per root
+  AGENTS.md's Deprecation Upgrades rule - leaving it as `require` means
+  the connection's actual security posture would silently weaken on a
+  future dependency bump with no code change to flag it.
 
 ## Considered Options
 - **`git diff HEAD^ HEAD`-based gate on the migrate sequence** -
@@ -129,6 +152,23 @@ Accepted
   `drizzle-kit migrate`** - confirmed against Drizzle's own docs that no
   such flag exists; printing the current migration SQL in CI is the
   closest equivalent available.
+
+## Security note
+During diagnosis of the first failed run, the live PostgreSQL admin
+password was inadvertently displayed in plaintext in an interactive
+session (`az keyvault secret show` without output suppression). Per
+root AGENTS.md's Zero Hardcoded Secrets rule, this was treated as a
+genuine exposure requiring rotation rather than dismissed as harmless
+because it happened in a diagnostic command rather than a committed
+file. The credential was rotated immediately: a new password was
+generated, applied to the live server first (`az postgres
+flexible-server update --admin-password`), then written to the
+`postgresql-admin-password-devafusion` Key Vault secret to match -
+in that order, so Key Vault and the live server were never
+inconsistent with each other. Confirmed via `terraform plan` that no
+drift resulted (the `azurerm_postgresql_flexible_server` resource
+reads the password from the same Key Vault data source Terraform
+already treats as externally managed, per ADR-0004/ADR-0010).
 
 ## Consequences
 - **One-time manual setup required, not yet done**: create the
