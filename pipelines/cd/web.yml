@@ -106,18 +106,44 @@ stages:
                     # DATABASE_URL - see that file's comment for why.
                     export DATABASE_URL="postgresql://devafusionadmin:${encodedPassword}@$(postgresqlFqdn):5432/postgres?sslmode=verify-full"
 
+                    # Real root cause of this stage's first failures -
+                    # NOT firewall propagation or SSL (both ruled out by
+                    # direct testing): azurerm_postgresql_flexible_server_
+                    # configuration's azure.extensions="CITEXT"
+                    # (infrastructure/app/modules/postgresql/main.tf)
+                    # only allowlists the extension server-wide - it
+                    # does NOT run CREATE EXTENSION inside any specific
+                    # database. Confirmed directly: querying
+                    # pg_extension on the live server showed only
+                    # plpgsql/pgaadauth/azure - citext was never
+                    # actually created, so the identity migration's
+                    # `"email" "citext"` column failed with a genuine
+                    # Postgres "type citext does not exist" error every
+                    # time. drizzle-kit's own CLI never surfaced this -
+                    # only found by bypassing it with drizzle-orm's
+                    # migrate() function directly, which does propagate
+                    # the underlying DrizzleQueryError. Idempotent (IF
+                    # NOT EXISTS), so safe to run on every deploy.
+                    cat > /tmp/ensure-citext.mjs <<'EOF'
+                    import pg from "pg";
+                    const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+                    try {
+                      await client.connect();
+                      await client.query("CREATE EXTENSION IF NOT EXISTS citext;");
+                    } finally {
+                      await client.end();
+                    }
+                    EOF
+                    node /tmp/ensure-citext.mjs
+
                     # Microsoft's own docs: "Changes to the firewall
                     # configuration of an Azure Database for PostgreSQL
-                    # flexible server can take up to five minutes."
-                    # Observed on the first real run of this pipeline:
-                    # az firewall-rule create returns success as soon as
-                    # Azure accepts the request, well before the rule
-                    # has actually propagated - drizzle-kit migrate then
-                    # connected immediately afterward and got a fast
-                    # network-level rejection. Retry with backoff up to
-                    # that documented worst case rather than a blind
-                    # sleep, since propagation is often much faster in
-                    # practice.
+                    # flexible server can take up to five minutes." Kept
+                    # as a defensive retry even after the citext fix
+                    # above, since the ~10-minute rule propagation this
+                    # server was separately observed to take (via
+                    # Terraform's own apply log) is a real, independent
+                    # risk on a freshly-created firewall rule.
                     maxAttempts=6
                     delaySeconds=10
                     attempt=1
