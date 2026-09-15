@@ -56,6 +56,12 @@ to this application.
 - `docker stop devafusion-postgres-local` when done — `--rm` above means it's discarded automatically, so nothing lingers between checks; each run starts from a clean, empty database, matching what a first-time `migrate` against a genuinely new table will actually see.
 - This is the same "prove it against something real before it ever runs unattended in CD" posture already established for Terraform (`terraform plan`/`validate` were never trusted alone for this project's Azure-specific gaps — see the PostgreSQL zone-pinning and webhook-expiry-ceiling incidents) — a migration is Postgres's equivalent of an infrastructure change and deserves the same scepticism.
 
+## Identity & MFA
+
+- **Better Auth owns session/credential/OAuth core; MFA is self-built, never Better Auth's own `twoFactor` plugin.** The plugin stores its primary TOTP secret as plain text with no read-side decrypt hook (`docs/adr/0012-better-auth-identity-and-self-hosted-mfa.md`) — this project's own `features/auth/mfa/` module owns the `user_security` table, encrypts `two_factor_secret` at the application layer (AES-256-GCM, key from `MFA_ENCRYPTION_KEY`) before it ever reaches Postgres, and verifies codes itself via `otpauth` in `app/api/auth/two-factor/verify/route.ts`. Do not re-enable the plugin's own TOTP storage/verification path as a shortcut — it reintroduces the plaintext-secret exposure this design deliberately avoids.
+- **Never call `encryptTwoFactorSecret`/`decryptTwoFactorSecret` outside `features/auth/mfa/`** — both carry a `server-only` guard already; route/action code should go through `DrizzleUserSecurityRepository`/`UserSecurityRepository`, not the cipher functions directly, to keep the encryption boundary in one place.
+- Regenerating Better Auth's core schema (`user`/`session`/`account`/`verification`) after a config/plugin change: `npx auth@latest generate --adapter drizzle --dialect postgresql --config auth.ts --output <scratch file>`, then diff and hand-merge into `db/schema.ts` — do not let the CLI overwrite `db/schema.ts` directly, since it also contains this project's own tables (`log_entries`, `user_security`) that the generator has no knowledge of. The correct CLI package is `auth` (`npx auth@latest ...`); `@better-auth/cli` is deprecated on npm and must not be reintroduced.
+
 ## Environment Variables
 
 - **Server-side variables** (no prefix, e.g. `DATABASE_URL`) stay in the Node.js process and are never bundled into browser JavaScript. A check for `undefined` before use is sufficient.

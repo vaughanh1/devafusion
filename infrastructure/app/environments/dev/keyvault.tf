@@ -51,3 +51,25 @@ data "azurerm_key_vault_secret" "postgresql_admin_password" {
 
   depends_on = [module.keyvault]
 }
+
+# ADR-0012: symmetric key for application-layer envelope encryption of
+# user_security.two_factor_secret - a base64-encoded 32-byte value
+# (openssl rand -base64 32), created manually in Key Vault per the same
+# sanctioned-manual-step rule as every other secret here. Terraform only
+# ever reads it, never writes it (ADR-0004).
+data "azurerm_key_vault_secret" "mfa_encryption_key" {
+  name         = "mfa-encryption-key-devafusion"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}
+
+# ADR-0012: Better Auth's own session/cookie signing secret (>= 32
+# characters, high entropy - openssl rand -base64 32), same manual-step
+# and read-only-from-Terraform pattern as every other secret above.
+data "azurerm_key_vault_secret" "better_auth_secret" {
+  name         = "better-auth-secret-devafusion"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}

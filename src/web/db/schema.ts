@@ -8,7 +8,27 @@
 // point instead: see the "server-only" import in
 // features/log/schema/log-entries.zod.ts, which fires before this file
 // is ever reached in that import chain.
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import {
+  boolean,
+  customType,
+  index,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+// Postgres's citext type has no native Drizzle column helper - defined
+// as a customType per Drizzle's own documented pattern. Requires the
+// citext extension to be allowlisted via azure.extensions on the live
+// server (infrastructure/app/modules/postgresql) before any migration
+// using it can run against a real (non-local) Postgres - see
+// docs/adr/0012 Consequences.
+const citext = customType<{ data: string }>({
+  dataType() {
+    return "citext";
+  },
+});
 
 // Column shape mirrors src/web/features/log/types.ts's LogEntry exactly -
 // this table is the eventual replacement for the static entries/*.ts
@@ -17,20 +37,119 @@ import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 // table, since they are always read/written as a whole ordered list and
 // never queried or filtered by individual item - a join table here would
 // be exactly the kind of speculative normalization YAGNI warns against.
-export const logEntries = pgTable("log_entries", {
-  slug: text("slug").primaryKey(),
-  date: text("date").notNull(),
-  title: text("title").notNull(),
-  summary: text("summary").notNull(),
-  tags: text("tags").array().notNull(),
-  decisions: text("decisions").array().notNull(),
-  milestones: text("milestones").array().notNull(),
-  validation: text("validation").array().notNull(),
-  commit: text("commit"),
-  pullRequest: text("pull_request"),
-  visibility: text("visibility", { enum: ["public", "private"] })
-    .notNull()
-    .default("public"),
+// Better Auth's core identity tables, generated verbatim via its own
+// CLI (`npx auth@latest generate --adapter drizzle --dialect
+// postgresql`) against this project's real db/client.ts, then hand-
+// merged into this shared schema file - never hand-edit these column
+// definitions; regenerate and diff instead (docs/adr/0012). The email
+// column is switched from Better Auth's default `text` to `citext` so
+// lookups are case-insensitive at the database level without a
+// per-query LOWER() on both sides - a deliberate, documented deviation
+// from the generator's raw output.
+export const user = pgTable("user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: citext("email").notNull().unique(),
+  emailVerified: boolean("email_verified").default(false).notNull(),
+  image: text("image"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("session_userId_idx").on(table.userId)],
+);
+
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("account_userId_idx").on(table.userId)],
+);
+
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+export const userRelations = relations(user, ({ many }) => ({
+  sessions: many(session),
+  accounts: many(account),
+}));
+
+export const sessionRelations = relations(session, ({ one }) => ({
+  user: one(user, {
+    fields: [session.userId],
+    references: [user.id],
+  }),
+}));
+
+export const accountRelations = relations(account, ({ one }) => ({
+  user: one(user, {
+    fields: [account.userId],
+    references: [user.id],
+  }),
+}));
+
+// Self-built MFA table (docs/adr/0012) - deliberately not Better Auth's
+// own `twoFactor` plugin, which stores its primary TOTP seed as plain
+// text with no read-side decrypt hook available. two_factor_secret
+// holds an application-layer envelope-encrypted value (see
+// features/auth/mfa/two-factor-secret-cipher.ts) - Postgres itself
+// never holds a recoverable plaintext seed. One-to-one with user,
+// cascade-deleted with it for GDPR "right to be forgotten".
+export const userSecurity = pgTable("user_security", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  twoFactorSecret: text("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -38,3 +157,23 @@ export const logEntries = pgTable("log_entries", {
     .notNull()
     .defaultNow(),
 });
+
+export const userSecurityRelations = relations(userSecurity, ({ one }) => ({
+  user: one(user, {
+    fields: [userSecurity.userId],
+    references: [user.id],
+  }),
+}));
+
+// log_entries (the engineering-log table from ADR-0011) is deliberately
+// NOT defined here right now. Its real consumer - a role-gated
+// visibility feature reading it via this identity layer - is blocked on
+// product decisions that were still open when this slice was built, so
+// migrating it to the live server alongside these identity tables would
+// have shipped a speculative table with no confirmed shape. The three
+// files that depended on it (DrizzleLogEntryRepository, its test, and
+// log-entries.zod.ts) are removed alongside it, not left dangling -
+// restore all four together (this table plus those three files) from
+// git history once the visibility feature is actually being built; see
+// docs/adr/0012's Consequences section.
+

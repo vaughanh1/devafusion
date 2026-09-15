@@ -13,8 +13,14 @@ module "webapp" {
   health_check_eviction_time_in_min = 2
 
   app_settings = {
-    NEXT_PUBLIC_GA_ID = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
-    DATABASE_URL      = "postgresql://devafusionadmin:${urlencode(data.azurerm_key_vault_secret.postgresql_admin_password.value)}@${module.postgresql.fqdn}:5432/postgres?sslmode=require"
+    NEXT_PUBLIC_GA_ID  = data.azurerm_key_vault_secret.google_analytics_ga4_devafusion.value
+    DATABASE_URL       = "postgresql://devafusionadmin:${urlencode(data.azurerm_key_vault_secret.postgresql_admin_password.value)}@${module.postgresql.fqdn}:5432/postgres?sslmode=require"
+    MFA_ENCRYPTION_KEY = data.azurerm_key_vault_secret.mfa_encryption_key.value
+    BETTER_AUTH_SECRET = data.azurerm_key_vault_secret.better_auth_secret.value
+    # Canonical domain (ADR-0008), not the raw *.azurewebsites.net
+    # default_hostname - Better Auth uses this to build OAuth callback
+    # URLs and validate the request origin.
+    BETTER_AUTH_URL = "https://${local.primary_domain}"
   }
 
   tags = local.common_tags
