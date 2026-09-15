@@ -27,6 +27,7 @@ import { entry as automationWebhookExpiryTime } from "./entries/automation-webho
 import { entry as automationWebhookExpiryActualCeiling } from "./entries/automation-webhook-expiry-actual-ceiling";
 import { entry as drizzleOrmToolingSetup } from "./entries/drizzle-orm-tooling-setup";
 import { entry as localPostgresMigrationTesting } from "./entries/local-postgres-migration-testing";
+import { entry as betterAuthIdentityAndSelfHostedMfa } from "./entries/better-auth-identity-and-self-hosted-mfa";
 
 export type { LogEntry } from "./types";
 
@@ -64,6 +65,7 @@ const allEntries = [
   automationWebhookExpiryActualCeiling,
   drizzleOrmToolingSetup,
   localPostgresMigrationTesting,
+  betterAuthIdentityAndSelfHostedMfa,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

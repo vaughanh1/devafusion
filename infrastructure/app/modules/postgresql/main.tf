@@ -39,6 +39,17 @@ resource "azurerm_postgresql_flexible_server" "this" {
 # description. No rule here ever defaults to the Azure-wide-open
 # 0.0.0.0-255.255.255.255 equivalent; every range must be named by the
 # caller (infrastructure/AGENTS.md, ADR-0010 Consequences).
+# docs/adr/0012: citext (case-insensitive email lookups for the identity
+# layer) requires explicit allowlisting on Azure Flexible Server - it is
+# not enabled merely because the base extension exists upstream in
+# PostgreSQL itself. Confirmed present in Azure's own extension-version
+# list for the pinned postgres_version (16).
+resource "azurerm_postgresql_flexible_server_configuration" "azure_extensions" {
+  name      = "azure.extensions"
+  server_id = azurerm_postgresql_flexible_server.this.id
+  value     = "CITEXT"
+}
+
 resource "azurerm_postgresql_flexible_server_firewall_rule" "this" {
   for_each = var.firewall_rules
 
