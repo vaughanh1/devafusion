@@ -72,6 +72,24 @@ export default defineConfig({
       // 127.0.0.1 health-check (and the Docker-based VisualRegression
       // job) can reach it inside a container.
       HOSTNAME: "0.0.0.0",
+      // ADR-0014: Cloudflare's own documented dummy Turnstile keys for
+      // automated testing - explicitly named to cover Playwright by
+      // Cloudflare's own testing docs, since a real Turnstile
+      // challenge actively detects an automated browser as a bot and
+      // would make this E2E suite flaky. 1x00000000000000000000AA
+      // (sitekey) / 1x0000000000000000000000000000000AA (secret key)
+      // is the documented "always passes" pair - not a real secret,
+      // safe to commit (gitleaks has no reason to flag Cloudflare's
+      // own published test fixture values).
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA",
+      TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA",
+      // form-timing-token.ts's HMAC key has no equivalent published
+      // test fixture - any fixed value works here since this suite
+      // never inspects the token's contents, only that the form
+      // eventually submits successfully. Not a real secret (root
+      // AGENTS.md Zero Hardcoded Secrets governs credentials with
+      // real-world value; a throwaway local-test HMAC key has none).
+      FORM_TIMING_TOKEN_SECRET: "playwright-e2e-test-fixture-key-not-a-real-secret",
     },
   },
 });

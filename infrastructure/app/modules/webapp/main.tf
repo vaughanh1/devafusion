@@ -30,7 +30,25 @@ resource "azurerm_linux_web_app" "this" {
 
     health_check_path                 = var.health_check_path
     health_check_eviction_time_in_min = var.health_check_path != null ? var.health_check_eviction_time_in_min : null
+
   }
+
+  # ADR-0014: Access Restrictions were evaluated and deliberately NOT
+  # added in this slice, for two different reasons:
+  # - On the main app: this is a public site with open self-service
+  #   registration, so an IP allow/deny list would block legitimate
+  #   visitors, not bots - Access Restrictions has no rate-limiting
+  #   concept, only allow/deny.
+  # - On the SCM/Kudu site: initially considered as a "deny by
+  #   default" restriction since it has no legitimate public visitor,
+  #   but AzureWebApp@1's zipDeploy method (pipelines/cd/web.yml)
+  #   deploys through that exact SCM endpoint - confirmed directly
+  #   against Microsoft's own task and Access Restrictions
+  #   documentation, neither of which documents a stable IP range or
+  #   service tag for Azure DevOps's ephemeral hosted agents (the same
+  #   problem already identified for advanced.ipAddress.trustedProxies
+  #   above). Denying SCM access with no viable allowlist would break
+  #   every future CD deployment, so this was not implemented.
 
   app_settings = var.app_settings
 

@@ -10,9 +10,11 @@
 // is ever reached in that import chain.
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   customType,
   index,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -117,6 +119,25 @@ export const verification = pgTable(
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
 );
+
+// Better Auth's own rate-limiter table (docs/adr/0014), CLI-generated
+// verbatim (`npx auth@latest generate`) - do not hand-edit these column
+// definitions, same discipline as the identity tables above. Storing
+// rate-limit counters here (rather than in-memory) is deliberate: this
+// app has no WAF/Front Door, so the app's own rate limiter is the only
+// throttling layer, and an in-memory counter would silently reset on
+// every restart/redeploy of this single-instance App Service. Rows are
+// pruned by a scheduled Azure Automation runbook (infrastructure/app/
+// modules/cost-circuit-breaker's sibling pattern) rather than left to
+// grow unbounded, since Better Auth itself only opportunistically
+// deletes expired rows as a side effect of a fresh request landing on
+// the same key, not on a schedule.
+export const rateLimit = pgTable("rate_limit", {
+  id: text("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
 
 export const userRelations = relations(user, ({ many }) => ({
   sessions: many(session),

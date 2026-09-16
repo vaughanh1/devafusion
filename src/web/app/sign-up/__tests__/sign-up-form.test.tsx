@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // vi.mock factories are hoisted above top-level variable declarations,
@@ -25,6 +26,23 @@ vi.mock("@/features/auth/auth-client", () => ({
     signUp: {
       email: signUpEmailMock,
     },
+  },
+}));
+
+// ADR-0014: TurnstileWidget depends on window.turnstile/next/script,
+// neither of which function meaningfully in jsdom - stubbed to
+// immediately report a fixed token, mirroring how a solved challenge
+// looks to the form. Turnstile's own client behaviour is Cloudflare's
+// to test, not this project's.
+vi.mock("@/components/auth/turnstile-widget", () => ({
+  TurnstileWidget: ({ onToken }: { onToken: (token: string) => void }) => {
+    // useEffect, not a synchronous render-time call - calling a
+    // parent's setState directly during another component's render
+    // triggers a React warning.
+    React.useEffect(() => {
+      onToken("test-captcha-token");
+    }, [onToken]);
+    return null;
   },
 }));
 
@@ -53,7 +71,7 @@ describe("SignUpForm", () => {
 
   it("redirects to the given path on a successful sign-up", async () => {
     signUpEmailMock.mockResolvedValue({ data: {}, error: null });
-    render(<SignUpForm redirectPath="/log" />);
+    render(<SignUpForm redirectPath="/log" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
@@ -63,7 +81,7 @@ describe("SignUpForm", () => {
 
   it("passes the redirect path through as callbackURL", async () => {
     signUpEmailMock.mockResolvedValue({ data: {}, error: null });
-    render(<SignUpForm redirectPath="/projects" />);
+    render(<SignUpForm redirectPath="/projects" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
@@ -79,7 +97,7 @@ describe("SignUpForm", () => {
       data: null,
       error: { message: "Email already in use." },
     });
-    render(<SignUpForm redirectPath="/" />);
+    render(<SignUpForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
@@ -91,7 +109,7 @@ describe("SignUpForm", () => {
 
   it("shows a generic error when the request throws", async () => {
     signUpEmailMock.mockRejectedValue(new Error("network down"));
-    render(<SignUpForm redirectPath="/" />);
+    render(<SignUpForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
 

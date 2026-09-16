@@ -80,3 +80,41 @@ data "azurerm_key_vault_secret" "better_auth_secret" {
 
   depends_on = [module.keyvault]
 }
+
+# ADR-0014: Cloudflare Turnstile's server-side secret key, used by
+# auth.ts's captcha plugin to call Turnstile's /siteverify. Manually
+# provisioned in Key Vault (ADR-0004's sanctioned manual step, same
+# pattern as every other secret here) after registering a free
+# Cloudflare account and Turnstile widget for this domain - Terraform
+# only ever reads it.
+data "azurerm_key_vault_secret" "turnstile_secret_key" {
+  name         = "turnstile-secret-key-devafusion"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}
+
+# Turnstile's sitekey is not itself sensitive (it is inlined into the
+# client bundle via NEXT_PUBLIC_TURNSTILE_SITE_KEY in web.tf), but is
+# still stored in Key Vault rather than a plain .tfvars literal since
+# it is generated as a pair with the secret key above when the widget
+# is registered in the Cloudflare dashboard - keeping both in the same
+# place avoids the pair drifting out of sync across two different
+# provisioning locations.
+data "azurerm_key_vault_secret" "turnstile_site_key" {
+  name         = "turnstile-site-key-devafusion"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}
+
+# ADR-0014: HMAC key signing the stateless form-timing token
+# (src/web/features/auth/form-timing-token.ts) - a high-entropy random
+# value (e.g. openssl rand -base64 32), same manual-provisioning
+# pattern as every other secret here. Terraform only ever reads it.
+data "azurerm_key_vault_secret" "form_timing_token_secret" {
+  name         = "form-timing-token-secret-devafusion"
+  key_vault_id = module.keyvault.key_vault_id
+
+  depends_on = [module.keyvault]
+}

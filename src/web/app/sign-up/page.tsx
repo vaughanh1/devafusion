@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SignUpForm } from "@/app/sign-up/sign-up-form";
+import { createFormTimingToken } from "@/features/auth/form-timing-token";
 import { resolveSafeRedirectPath } from "@/features/auth/safe-redirect";
 
 export const metadata: Metadata = {
@@ -24,6 +25,10 @@ export default async function SignUpPage({
 }) {
   const params = await searchParams;
   const redirectPath = resolveSafeRedirectPath(params.redirect);
+  // ADR-0014: stamped fresh on every server render (never cached) so
+  // the elapsed-time check in features/auth/form-timing-token.ts
+  // measures real time-on-page, not a build-time constant.
+  const formTimingToken = createFormTimingToken();
 
   return (
     <section className="mx-auto max-w-md px-6 py-20">
@@ -49,7 +54,24 @@ export default async function SignUpPage({
         .
       </p>
 
-      <SignUpForm redirectPath={redirectPath} />
+      <SignUpForm redirectPath={redirectPath} formTimingToken={formTimingToken} />
+
+      {/* UK GDPR transparency notice, placed directly at the point of
+          collection rather than relying on the footer's /legal link
+          alone - the substantive lawful-basis/retention/rights detail
+          already lives in /legal (Account data section); this is the
+          short in-context pointer to it. */}
+      <p className="mt-6 text-sm text-muted">
+        By creating an account, you agree to our processing of this data
+        as described in our{" "}
+        <Link
+          href="/legal"
+          className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
+        >
+          Privacy &amp; cookies policy
+        </Link>
+        .
+      </p>
     </section>
   );
 }

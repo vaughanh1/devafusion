@@ -3,9 +3,16 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { PasswordField } from "@/components/auth/password-field";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { authClient } from "@/features/auth/auth-client";
 
-export function SignUpForm({ redirectPath }: { redirectPath: string }) {
+type SignUpFormProps = {
+  redirectPath: string;
+  formTimingToken: string;
+};
+
+export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
   const router = useRouter();
   const nameId = useId();
   const emailId = useId();
@@ -15,6 +22,7 @@ export function SignUpForm({ redirectPath }: { redirectPath: string }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,12 +35,31 @@ export function SignUpForm({ redirectPath }: { redirectPath: string }) {
     // in src/web/AGENTS.md) - authClient methods resolve with a
     // { data, error } shape rather than throwing, but this still wraps
     // the call in case network failure throws before that shape forms.
+    if (!captchaToken) {
+      setError("Please complete the verification check before continuing.");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const { error: signUpError } = await authClient.signUp.email({
         name,
         email,
         password,
         callbackURL: redirectPath,
+        fetchOptions: {
+          headers: { "x-captcha-response": captchaToken },
+          // formTimingToken isn't part of signUp.email's typed
+          // parameters, but Better Auth's own dynamic path proxy
+          // (better-auth/dist/client/proxy) merges fetchOptions.body
+          // into the outgoing request body, and /sign-up/email's own
+          // server-side schema is intersected with
+          // z.record(z.string(), z.any()) (verified directly against
+          // the installed package), so this extra field arrives at
+          // auth.ts's hooks.before intact - see
+          // features/auth/form-timing-token.ts.
+          body: { formTimingToken },
+        },
       });
 
       if (signUpError) {
@@ -95,30 +122,23 @@ export function SignUpForm({ redirectPath }: { redirectPath: string }) {
         />
       </div>
 
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor={passwordId}
-          className="text-sm font-medium text-foreground"
-        >
-          Password
-        </label>
-        <input
-          id={passwordId}
-          type="password"
-          name="password"
-          autoComplete="new-password"
-          minLength={8}
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          aria-describedby={error ? errorId : undefined}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        />
-      </div>
+      <PasswordField
+        id={passwordId}
+        label="Password"
+        name="password"
+        autoComplete="new-password"
+        minLength={8}
+        required
+        value={password}
+        onChange={setPassword}
+        describedBy={error ? errorId : undefined}
+      />
+
+      <TurnstileWidget onToken={setCaptchaToken} />
 
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !captchaToken}
         className="min-h-11 border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "Creating account…" : "Create account"}

@@ -1,0 +1,142 @@
+# ADR-0014: prunes expired rows from the rate_limit table (shared by
+# Better Auth's own database-backed rate limiter and this project's
+# self-built limiter for routes outside Better Auth's router - see
+# src/web/features/auth/rate-limit.ts and src/web/db/schema.ts's
+# rateLimit table comment). Both limiters only opportunistically delete
+# an expired row as a side effect of a fresh request landing on the
+# same key - with no traffic on a given key, its row would otherwise
+# grow stale forever. Reuses the CD pipeline's own proven firewall-
+# rule-open/Node-script/firewall-rule-close pattern
+# (pipelines/cd/web.yml's ApplyMigration stage) rather than an Azure
+# Automation runbook: Automation's sandboxed PowerShell runtime has no
+# psql/Npgsql precedent in this repo, and a Python runbook would need
+# its own new module-import setup proven from scratch - this pipeline
+# needs no new tooling at all, just the same Node/pg script already
+# working elsewhere in this repo.
+trigger: none
+
+pr: none
+
+schedules:
+  - cron: "0 3 * * *"
+    displayName: Daily rate_limit pruning (03:00 UTC)
+    branches:
+      include:
+        - develop
+    always: true
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  webAppName: "devafusion-dev"
+  resourceGroupName: "rg-devafusion-dev-uks"
+  postgresqlServerName: "psql-devafusion-dev-uks"
+  postgresqlFqdn: "psql-devafusion-dev-uks.postgres.database.azure.com"
+  keyVaultName: "kv-devafusion-dev-uks"
+
+stages:
+  - stage: PruneRateLimit
+    displayName: Prune expired rate_limit rows
+
+    jobs:
+      - deployment: PruneRateLimit
+        displayName: Delete expired rate_limit rows
+        environment: devafusion-dev-migrations
+
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+
+                - task: AzureKeyVault@2
+                  displayName: Fetch PostgreSQL admin password from Key Vault
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    KeyVaultName: "$(keyVaultName)"
+                    SecretsFilter: "postgresql-admin-password-devafusion"
+
+                - task: AzureCLI@2
+                  displayName: Open a temporary, named firewall rule for this agent
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      agentIp=$(curl -s https://api.ipify.org)
+                      echo "Agent IP: $agentIp"
+
+                      az postgres flexible-server firewall-rule create \
+                        --resource-group "$(resourceGroupName)" \
+                        --server-name "$(postgresqlServerName)" \
+                        --name prune-agent-temp \
+                        --start-ip-address "$agentIp" \
+                        --end-ip-address "$agentIp"
+
+                - task: UseNode@1
+                  displayName: Install Node.js 24
+                  inputs:
+                    version: "24.x"
+
+                - script: |
+                    set -euo pipefail
+
+                    cd "$(Build.SourcesDirectory)/src/web"
+
+                    npm ci
+
+                    encodedPassword=$(python3 -c "import urllib.parse, sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$PG_ADMIN_PASSWORD")
+                    export DATABASE_URL="postgresql://devafusionadmin:${encodedPassword}@$(postgresqlFqdn):5432/postgres?sslmode=verify-full"
+
+                    cat > ./prune-rate-limit.mjs <<'EOF'
+                    import pg from "pg";
+                    const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+                    try {
+                      await client.connect();
+                      const result = await client.query(
+                        'DELETE FROM "rate_limit" WHERE "last_request" < $1',
+                        [Date.now() - 24 * 60 * 60 * 1000],
+                      );
+                      console.log(`Deleted ${result.rowCount} expired rate_limit row(s).`);
+                    } finally {
+                      await client.end();
+                    }
+                    EOF
+
+                    maxAttempts=6
+                    delaySeconds=10
+                    attempt=1
+                    until node ./prune-rate-limit.mjs; do
+                      if [ "$attempt" -ge "$maxAttempts" ]; then
+                        echo "prune-rate-limit.mjs failed after ${attempt} attempts (~5 minutes) - giving up."
+                        exit 1
+                      fi
+                      echo "prune-rate-limit.mjs failed (attempt ${attempt}/${maxAttempts}) - likely firewall-rule propagation delay, retrying in ${delaySeconds}s..."
+                      sleep "$delaySeconds"
+                      attempt=$((attempt + 1))
+                      delaySeconds=$((delaySeconds * 2))
+                    done
+
+                    rm ./prune-rate-limit.mjs
+                  displayName: Delete expired rate_limit rows
+                  env:
+                    PG_ADMIN_PASSWORD: "$(postgresql-admin-password-devafusion)"
+
+                - task: AzureCLI@2
+                  displayName: Close the temporary firewall rule
+                  condition: always()
+                  inputs:
+                    azureSubscription: sc-devafusion-terraform
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      set -euo pipefail
+
+                      az postgres flexible-server firewall-rule delete \
+                        --resource-group "$(resourceGroupName)" \
+                        --server-name "$(postgresqlServerName)" \
+                        --name prune-agent-temp \
+                        --yes

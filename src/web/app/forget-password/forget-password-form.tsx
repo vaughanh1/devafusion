@@ -1,71 +1,83 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
-import { PasswordField } from "@/components/auth/password-field";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { authClient } from "@/features/auth/auth-client";
 
-type LogInFormProps = {
-  redirectPath: string;
+type ForgetPasswordFormProps = {
   formTimingToken: string;
 };
 
-export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
-  const router = useRouter();
+export function ForgetPasswordForm({ formTimingToken }: ForgetPasswordFormProps) {
   const emailId = useId();
-  const passwordId = useId();
   const errorId = useId();
 
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Better Auth's own /request-password-reset handler returns the same
+  // generic "if this email exists..." message whether or not the
+  // account exists (verified directly against the installed package -
+  // it deliberately simulates a dummy token generation and database
+  // lookup on the not-found path to keep response timing consistent
+  // too) - this client state mirrors that by having only one success
+  // outcome, never a per-outcome message.
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    setIsSubmitting(true);
 
     if (!captchaToken) {
       setError("Please complete the verification check before continuing.");
-      setIsSubmitting(false);
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      const { error: signInError } = await authClient.signIn.email({
-        email,
-        password,
-        callbackURL: redirectPath,
-        fetchOptions: {
+      // authClient's dynamic path proxy (better-auth/dist/client/proxy)
+      // maps requestPasswordReset -> toKebabCase -> /request-password-
+      // reset, verified directly against the installed package rather
+      // than assumed from documentation.
+      const { error: requestError } = await authClient.requestPasswordReset(
+        {
+          email,
+          redirectTo: "/reset-password",
+        },
+        {
           headers: { "x-captcha-response": captchaToken },
-          // See sign-up-form.tsx's identical comment - formTimingToken
-          // is merged into the request body via fetchOptions.body by
-          // Better Auth's dynamic path proxy, since it isn't part of
-          // signIn.email's own typed parameters.
+          // See sign-up-form.tsx's identical comment - merged into the
+          // request body by Better Auth's dynamic path proxy.
           body: { formTimingToken },
         },
-      });
+      );
 
-      if (signInError) {
-        // Deliberately generic rather than echoing Better Auth's own
-        // message verbatim here - it can distinguish "no such user"
-        // from "wrong password" in ways that enable account
-        // enumeration. A single message for any credential failure.
-        setError("Invalid email or password.");
+      if (requestError) {
+        setError("Something went wrong. Please try again.");
         setIsSubmitting(false);
         return;
       }
 
-      router.push(redirectPath);
-      router.refresh();
+      setIsSubmitted(true);
     } catch {
       setError("Something went wrong. Please try again.");
       setIsSubmitting(false);
     }
+  }
+
+  if (isSubmitted) {
+    return (
+      <p
+        role="status"
+        className="mt-10 border border-surface-border bg-surface px-4 py-3 text-sm font-medium text-foreground"
+      >
+        If that email exists in our system, a password reset link has been
+        sent to it.
+      </p>
+    );
   }
 
   return (
@@ -97,17 +109,6 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
         />
       </div>
 
-      <PasswordField
-        id={passwordId}
-        label="Password"
-        name="password"
-        autoComplete="current-password"
-        required
-        value={password}
-        onChange={setPassword}
-        describedBy={error ? errorId : undefined}
-      />
-
       <TurnstileWidget onToken={setCaptchaToken} />
 
       <button
@@ -115,7 +116,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
         disabled={isSubmitting || !captchaToken}
         className="min-h-11 border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {isSubmitting ? "Logging in…" : "Log in"}
+        {isSubmitting ? "Sending…" : "Send reset link"}
       </button>
     </form>
   );

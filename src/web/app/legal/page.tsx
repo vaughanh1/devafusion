@@ -95,6 +95,41 @@ export default function LegalPage() {
 
         <div>
           <h2 className="text-xl font-semibold text-foreground">
+            Bot protection (Cloudflare Turnstile)
+          </h2>
+          <p className="mt-2">
+            The sign-up, log-in and forgot-password forms use Cloudflare
+            Turnstile to verify you are a real person rather than an
+            automated script, since this site has no separate firewall
+            in front of it. Turnstile runs a background check (your IP
+            address and some browser signals are sent to Cloudflare)
+            and, only if that check is inconclusive, may ask you to tick
+            a single checkbox - it never shows an image or text puzzle.
+            Our lawful basis for this processing is legitimate interests
+            (UK GDPR Article 6(1)(f)): protecting the account service
+            from automated abuse, which also protects genuine users of
+            it. See{" "}
+            <a
+              href="https://www.cloudflare.com/privacypolicy/"
+              rel="noreferrer"
+              target="_blank"
+              className="underline hover:text-foreground"
+            >
+              Cloudflare&apos;s privacy policy
+            </a>{" "}
+            (Section 18, Turnstile Privacy Addendum) for what Cloudflare
+            itself does with this data; Cloudflare, Ltd. (County Hall,
+            Belvedere Road, London SE1 7PB) is its UK entity. In the
+            configuration used on this site, Turnstile does not set any
+            cookie - if that ever changes (Cloudflare&apos;s
+            &quot;pre-clearance&quot; mode, not currently enabled, sets
+            a <code>cf_clearance</code> cookie), this page will be
+            updated to disclose it before it is switched on.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">
             Accessibility theme preference
           </h2>
           <p className="mt-2">
@@ -117,8 +152,9 @@ export default function LegalPage() {
           </h2>
           <p className="mt-2">
             This site does not sell or share your data with third parties
-            beyond Google Analytics, does not run advertising, and does
-            not use any tracking cookies other than the analytics cookies
+            beyond Google Analytics and Cloudflare Turnstile (both
+            described above), does not run advertising, and does not use
+            any tracking cookies other than the analytics cookies
             described above. The accessibility preference and session
             cookies described above store only your chosen theme, text
             size, or session token, and are not used for tracking.
