@@ -32,6 +32,7 @@ import { entry as cdMigrationPipeline } from "./entries/cd-migration-pipeline";
 import { entry as registrationAndLoginUi } from "./entries/registration-and-login-ui";
 import { entry as blueskySocialLink } from "./entries/bluesky-social-link";
 import { entry as clientLevelAuthHardening } from "./entries/client-level-auth-hardening";
+import { entry as turnstileBuildTimeKeyAndCspFix } from "./entries/turnstile-build-time-key-and-csp-fix";
 
 export type { LogEntry } from "./types";
 
@@ -74,6 +75,7 @@ const allEntries = [
   registrationAndLoginUi,
   blueskySocialLink,
   clientLevelAuthHardening,
+  turnstileBuildTimeKeyAndCspFix,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

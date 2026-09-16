@@ -41,10 +41,18 @@ const nextConfig: NextConfig = {
             //   @next/third-parties GoogleAnalytics component) that
             //   this CSP must not silently break - carried forward
             //   unchanged, not newly introduced by this change.
+            //   *.google-analytics.com (a CSP wildcard, matches any
+            //   subdomain) is required, not just www.google-
+            //   analytics.com: GA4's gtag.js sends its actual collect
+            //   beacon to a region-prefixed subdomain
+            //   (region1.google-analytics.com, etc., confirmed by a
+            //   real browser console CSP violation against the
+            //   www.-only version originally shipped here) rather than
+            //   the bare www host.
             value: [
               "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.googletagmanager.com",
               "frame-src 'self' https://challenges.cloudflare.com",
-              "connect-src 'self' https://challenges.cloudflare.com https://www.google-analytics.com https://www.googletagmanager.com",
+              "connect-src 'self' https://challenges.cloudflare.com https://*.google-analytics.com https://www.googletagmanager.com",
             ].join("; "),
           },
         ],

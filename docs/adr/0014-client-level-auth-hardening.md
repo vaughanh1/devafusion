@@ -204,6 +204,45 @@ only controls visibility, not whether the success `callback` fires, so
 this has no effect on the existing "disable submit until a token is
 received" logic in each form.
 
+### Two live-deployment bugs found post-merge and fixed
+The initial deployment of this ADR's Turnstile work shipped two real
+bugs, both confirmed on the live site's own browser console (not
+theoretical):
+
+- **`NEXT_PUBLIC_TURNSTILE_SITE_KEY is not set - Turnstile widget
+  cannot render.`** Terraform wires this into `web.tf`'s
+  `app_settings` (a runtime App Service setting), but
+  `pipelines/ci/web.yml`'s Build stage runs `next build` before any
+  deployment or Key Vault access happens, and `TurnstileWidget` is a
+  Client Component - `NEXT_PUBLIC_*` values it reads must be inlined
+  into the client bundle *at that build step*, not supplied at
+  runtime. Empirically confirmed by inspecting the actual compiled
+  Turbopack output: with the value absent, `sitekey` compiles to a
+  live `process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY` property lookup
+  guarded by an `if (!sitekey)` branch; with the value present as a
+  real shell environment variable at build time, it compiles to the
+  literal string and the guard branch is dead-code-eliminated
+  entirely. Also empirically confirmed that `.env.local` alone did
+  **not** reliably reproduce this inlining in this Next.js 16.3.5 +
+  Turbopack setup, even though the file was present and correctly
+  named - only a genuine process environment variable at `next build`
+  time worked. Fixed by adding an `AzureKeyVault@2` step to CI's Build
+  stage (fetching `turnstile-site-key-devafusion`) and setting
+  `NEXT_PUBLIC_TURNSTILE_SITE_KEY` on the `env:` block of the build
+  script step immediately after; the same fix was applied to the
+  `E2ETests` and `VisualRegression` jobs' own independent `npm run
+  build` steps (using Cloudflare's dummy sitekey, not the real one),
+  since CD's `Web` stage does `checkout: none` and only deploys the
+  artifact CI already built - there is no second build step to fix on
+  the deployment side.
+- **CSP blocking GA4's actual collect beacon.** The originally-shipped
+  `connect-src` allowlisted `www.google-analytics.com`, but GA4's
+  `gtag.js` sends its real beacon to a region-prefixed subdomain
+  (`region1.google-analytics.com`, confirmed directly from a live
+  browser console CSP violation) that the bare `www.` host never
+  covers. Fixed by switching to the `*.google-analytics.com` wildcard,
+  which CSP source-list syntax matches against any subdomain.
+
 ### Turnstile E2E coverage
 Added `tests-e2e/sign-up.spec.ts` exercising the real `TurnstileWidget`
 render, using Cloudflare's own documented dummy sitekey/secretKey pair

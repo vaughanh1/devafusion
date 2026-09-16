@@ -51,6 +51,7 @@ variables:
   PLAYWRIGHT_BROWSER_TARGET: "${{ parameters.playwrightBrowserTarget }}"
   TEST_DB_ACTIONS: "${{ parameters.testDbActions }}"
   TEST_MFA_FLOWS: "${{ parameters.testMfaFlows }}"
+  keyVaultName: "kv-devafusion-dev-uks"
 
 stages:
   - stage: Build
@@ -110,6 +111,28 @@ stages:
                 npm | "$(Agent.OS)"
               path: $(webWorkingDirectory)/node_modules
 
+          # ADR-0014: NEXT_PUBLIC_* variables are inlined into the
+          # client bundle by `next build` itself, not read at runtime -
+          # unlike NEXT_PUBLIC_GA_ID (read inside a Server Component,
+          # so App Service's own runtime app_settings value is enough),
+          # TurnstileWidget is a Client Component, so
+          # NEXT_PUBLIC_TURNSTILE_SITE_KEY must be present in *this*
+          # build step's environment, not just Terraform's app_settings
+          # - confirmed as the real root cause of a live "Turnstile
+          # widget cannot render" bug by reading how Next.js handles
+          # NEXT_PUBLIC_* in client vs. server components. The sitekey
+          # itself is not sensitive (Turnstile's own design - it
+          # identifies the widget to Cloudflare, not a credential), but
+          # is still sourced from Key Vault rather than a plain
+          # variable to stay paired with its secretKey and avoid a
+          # second provisioning location drifting out of sync.
+          - task: AzureKeyVault@2
+            displayName: Fetch Turnstile sitekey from Key Vault
+            inputs:
+              azureSubscription: sc-devafusion-terraform
+              KeyVaultName: "$(keyVaultName)"
+              SecretsFilter: "turnstile-site-key-devafusion"
+
           - script: |
               set -euo pipefail
 
@@ -133,6 +156,12 @@ stages:
 
               cp -R .next/standalone/. "$(webArtifactDirectory)/"
             displayName: Build and package application
+            env:
+              # AzureKeyVault@2 maps hyphens in the secret name to its
+              # own env var verbatim (same pattern as
+              # postgresql-admin-password-devafusion elsewhere in this
+              # repo's pipelines).
+              NEXT_PUBLIC_TURNSTILE_SITE_KEY: "$(turnstile-site-key-devafusion)"
 
           - task: PublishPipelineArtifact@1
             displayName: Publish web application
@@ -236,6 +265,15 @@ stages:
                 cp -R public .next/standalone/public
               fi
             displayName: Build application for E2E
+            env:
+              # ADR-0014: NEXT_PUBLIC_TURNSTILE_SITE_KEY is inlined at
+              # this build step, not read at Playwright's own
+              # webServer runtime (which only starts the already-built
+              # standalone server, per the identical comment on the
+              # main Build stage above) - Cloudflare's own documented
+              # dummy "always passes" sitekey, not the real Key
+              # Vault-sourced one, since this is a test build.
+              NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
 
           - script: |
               set -euo pipefail
@@ -306,6 +344,14 @@ stages:
                 cp -R public .next/standalone/public
               fi
             displayName: Build application for visual regression
+            env:
+              # ADR-0014: the committed baseline only covers the home
+              # page, which never mounts TurnstileWidget, so this
+              # isn't strictly required today - set anyway for
+              # consistency with the other two build steps and so a
+              # future baseline covering /sign-up or /log-in doesn't
+              # silently inherit this same class of bug.
+              NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
 
           - script: |
               set -euo pipefail
