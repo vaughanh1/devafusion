@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 // vi.mock factories are hoisted above top-level variable declarations,
@@ -25,6 +26,16 @@ vi.mock("@/features/auth/auth-client", () => ({
     signIn: {
       email: signInEmailMock,
     },
+  },
+}));
+
+// ADR-0014: see sign-up-form.test.tsx's identical comment.
+vi.mock("@/components/auth/turnstile-widget", () => ({
+  TurnstileWidget: ({ onToken }: { onToken: (token: string) => void }) => {
+    React.useEffect(() => {
+      onToken("test-captcha-token");
+    }, [onToken]);
+    return null;
   },
 }));
 
@@ -50,7 +61,7 @@ describe("LogInForm", () => {
 
   it("redirects to the given path on a successful log-in", async () => {
     signInEmailMock.mockResolvedValue({ data: {}, error: null });
-    render(<LogInForm redirectPath="/log" />);
+    render(<LogInForm redirectPath="/log" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
@@ -60,7 +71,7 @@ describe("LogInForm", () => {
 
   it("passes the redirect path through as callbackURL", async () => {
     signInEmailMock.mockResolvedValue({ data: {}, error: null });
-    render(<LogInForm redirectPath="/projects" />);
+    render(<LogInForm redirectPath="/projects" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
@@ -76,7 +87,7 @@ describe("LogInForm", () => {
       data: null,
       error: { message: "No user found for this email." },
     });
-    render(<LogInForm redirectPath="/" />);
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
@@ -88,7 +99,7 @@ describe("LogInForm", () => {
 
   it("shows a generic error when the request throws", async () => {
     signInEmailMock.mockRejectedValue(new Error("network down"));
-    render(<LogInForm redirectPath="/" />);
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
 

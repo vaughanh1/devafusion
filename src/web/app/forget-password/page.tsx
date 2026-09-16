@@ -1,27 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LogInForm } from "@/app/log-in/log-in-form";
+import { ForgetPasswordForm } from "@/app/forget-password/forget-password-form";
 import { createFormTimingToken } from "@/features/auth/form-timing-token";
-import { resolveSafeRedirectPath } from "@/features/auth/safe-redirect";
 
 export const metadata: Metadata = {
-  title: "Log in",
-  description: "Log in to your Devafusion account.",
-  alternates: { canonical: "/log-in" },
+  title: "Forgot password",
+  description: "Request a password reset link for your Devafusion account.",
+  alternates: { canonical: "/forget-password" },
   robots: {
     index: false,
     follow: true,
   },
 };
 
-export default async function LogInPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  const redirectPath = resolveSafeRedirectPath(params.redirect);
+// ADR-0014: forces dynamic rendering. Unlike /sign-up and /log-in
+// (already dynamic because their page components await searchParams),
+// this page has no dynamic API usage of its own, so Next.js would
+// otherwise statically prerender it at build time - which is exactly
+// wrong for createFormTimingToken() below, since the token must
+// reflect a real visitor's real render time, not a single value baked
+// into the build output and reused by every visitor forever.
+export const dynamic = "force-dynamic";
+
+export default function ForgetPasswordPage() {
   const formTimingToken = createFormTimingToken();
 
   return (
@@ -31,33 +33,22 @@ export default async function LogInPage({
       </p>
 
       <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">
-        Log in.
+        Reset your password.
       </h1>
 
       <p className="mt-6 text-lg leading-8 text-muted">
-        Don&apos;t have an account?{" "}
+        Enter your account email and, if it matches an account, we&apos;ll
+        send a link to reset your password.{" "}
         <Link
-          href={{
-            pathname: "/sign-up",
-            query: redirectPath === "/" ? undefined : { redirect: redirectPath },
-          }}
+          href="/log-in"
           className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
         >
-          Sign up
+          Back to log in
         </Link>
         .
       </p>
 
-      <LogInForm redirectPath={redirectPath} formTimingToken={formTimingToken} />
-
-      <p className="mt-4 text-sm text-muted">
-        <Link
-          href="/forget-password"
-          className="underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground"
-        >
-          Forgot your password?
-        </Link>
-      </p>
+      <ForgetPasswordForm formTimingToken={formTimingToken} />
 
       <p className="mt-6 text-sm text-muted">
         See our{" "}

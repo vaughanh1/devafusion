@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { decryptTwoFactorSecret } from "@/features/auth/mfa/two-factor-secret-cipher";
 import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
 import { verifyTotpRequestSchema } from "@/features/auth/mfa/verify-totp.zod";
+import { consumeRateLimit } from "@/features/auth/rate-limit";
 
 // Self-built TOTP verification (docs/adr/0012) - deliberately not Better
 // Auth's own twoFactor plugin endpoint, since this project's secret is
@@ -13,11 +14,36 @@ import { verifyTotpRequestSchema } from "@/features/auth/mfa/verify-totp.zod";
 // not yet built) ever decrypts it.
 const userSecurityRepository = new DrizzleUserSecurityRepository();
 
+// ADR-0014: this route sits outside Better Auth's own router (it calls
+// auth.api.getSession directly rather than being dispatched through
+// auth's endpoint pipeline), so Better Auth's own rateLimit plugin does
+// not throttle it - the self-built limiter in features/auth/rate-limit
+// covers this gap. A tight window/max here matches the sensitivity of
+// a brute-forceable 6-digit TOTP code (the same rationale
+// two-factor/verify's own window: 1 comment already documents for its
+// clock-drift tolerance).
+const TOTP_VERIFY_RATE_LIMIT = { windowMs: 10_000, max: 5 };
+
 export async function POST(request: Request) {
   // Explicit server-side error handling (src/web/AGENTS.md) - every
   // branch below either returns a Response or is caught, never an
   // unhandled rejection.
   try {
+    const rateLimitResult = await consumeRateLimit(
+      request,
+      "/api/auth/two-factor/verify",
+      TOTP_VERIFY_RATE_LIMIT,
+    );
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: { "X-Retry-After": rateLimitResult.retryAfterSeconds.toString() },
+        },
+      );
+    }
+
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

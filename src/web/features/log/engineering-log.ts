@@ -31,6 +31,7 @@ import { entry as betterAuthIdentityAndSelfHostedMfa } from "./entries/better-au
 import { entry as cdMigrationPipeline } from "./entries/cd-migration-pipeline";
 import { entry as registrationAndLoginUi } from "./entries/registration-and-login-ui";
 import { entry as blueskySocialLink } from "./entries/bluesky-social-link";
+import { entry as clientLevelAuthHardening } from "./entries/client-level-auth-hardening";
 
 export type { LogEntry } from "./types";
 
@@ -72,6 +73,7 @@ const allEntries = [
   cdMigrationPipeline,
   registrationAndLoginUi,
   blueskySocialLink,
+  clientLevelAuthHardening,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

@@ -1,10 +1,18 @@
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
+import { consumeRateLimit } from "@/features/auth/rate-limit";
 
 const userSecurityRepository = new DrizzleUserSecurityRepository();
+
+// ADR-0014: outside Better Auth's own router (see two-factor/verify's
+// identical comment) - a looser window/max than the TOTP route, since
+// this is an authenticated user exporting their own data rather than a
+// credential brute-force target, but still bounded so a compromised
+// session or scripted client can't hammer the database repeatedly.
+const EXPORT_RATE_LIMIT = { windowMs: 60_000, max: 10 };
 
 // UK GDPR Article 15 (right of access) - returns everything held on the
 // requesting user's own account. Deliberately excludes the password
@@ -13,9 +21,24 @@ const userSecurityRepository = new DrizzleUserSecurityRepository();
 // enabled, never the ciphertext) - exporting either would hand the
 // user a value with no legitimate use to them while creating a new
 // exposure surface if the export itself were ever intercepted.
-export async function GET() {
+export async function GET(request: NextRequest) {
   // Explicit server-side error handling (src/web/AGENTS.md).
   try {
+    const rateLimitResult = await consumeRateLimit(
+      request,
+      "/api/account/export",
+      EXPORT_RATE_LIMIT,
+    );
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        {
+          status: 429,
+          headers: { "X-Retry-After": rateLimitResult.retryAfterSeconds.toString() },
+        },
+      );
+    }
+
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
