@@ -34,6 +34,7 @@ import { entry as blueskySocialLink } from "./entries/bluesky-social-link";
 import { entry as clientLevelAuthHardening } from "./entries/client-level-auth-hardening";
 import { entry as turnstileBuildTimeKeyAndCspFix } from "./entries/turnstile-build-time-key-and-csp-fix";
 import { entry as ga4BuildTimeIdFix } from "./entries/ga4-build-time-id-fix";
+import { entry as buttonCursorConsistency } from "./entries/button-cursor-consistency";
 
 export type { LogEntry } from "./types";
 
@@ -78,6 +79,7 @@ const allEntries = [
   clientLevelAuthHardening,
   turnstileBuildTimeKeyAndCspFix,
   ga4BuildTimeIdFix,
+  buttonCursorConsistency,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

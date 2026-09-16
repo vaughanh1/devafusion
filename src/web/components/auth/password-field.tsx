@@ -62,7 +62,7 @@ export function PasswordField({
           // native reveal toggle, so screen reader users hear the
           // control's current effect rather than a static label.
           aria-label={isRevealed ? "Hide password" : "Show password"}
-          className="absolute right-2 min-h-11 px-2 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="absolute right-2 min-h-11 cursor-pointer px-2 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isRevealed ? "Hide" : "Show"}
         </button>

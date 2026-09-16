@@ -115,7 +115,7 @@ export function ThemeSelector() {
             type="button"
             aria-pressed={activeTheme === option.value}
             onClick={() => handleThemeChange(option.value)}
-            className={`min-h-11 border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`min-h-11 cursor-pointer border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               activeTheme === option.value
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-surface-border text-muted hover:border-foreground hover:text-foreground"
@@ -128,7 +128,7 @@ export function ThemeSelector() {
           type="button"
           onClick={handleThemeReset}
           disabled={activeTheme === null}
-          className="min-h-11 border border-surface-border px-3 text-xs font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-11 cursor-pointer border border-surface-border px-3 text-xs font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           System
         </button>
@@ -142,7 +142,7 @@ export function ThemeSelector() {
             type="button"
             aria-pressed={activeScale === option.value}
             onClick={() => handleScaleChange(option.value)}
-            className={`min-h-11 border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+            className={`min-h-11 cursor-pointer border px-3 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
               activeScale === option.value
                 ? "border-accent bg-accent text-accent-foreground"
                 : "border-surface-border text-muted hover:border-foreground hover:text-foreground"
