@@ -204,9 +204,9 @@ only controls visibility, not whether the success `callback` fires, so
 this has no effect on the existing "disable submit until a token is
 received" logic in each form.
 
-### Two live-deployment bugs found post-merge and fixed
-The initial deployment of this ADR's Turnstile work shipped two real
-bugs, both confirmed on the live site's own browser console (not
+### Three live-deployment bugs found post-merge and fixed
+The initial deployment of this ADR's Turnstile work shipped three real
+bugs, all confirmed on the live site's own browser console (not
 theoretical):
 
 - **`NEXT_PUBLIC_TURNSTILE_SITE_KEY is not set - Turnstile widget
@@ -242,6 +242,33 @@ theoretical):
   browser console CSP violation) that the bare `www.` host never
   covers. Fixed by switching to the `*.google-analytics.com` wildcard,
   which CSP source-list syntax matches against any subdomain.
+- **`@next/third-parties: GA has not been initialized` console
+  warning, GA4 silently never loading.** The same build-time-inlining
+  bug as the Turnstile sitekey above, on `NEXT_PUBLIC_GA_ID` instead.
+  `google-analytics.tsx` (the wrapper around `@next/third-parties`'s
+  `GoogleAnalytics`) has no `"use client"` directive, which was
+  wrongly assumed to mean it only ever runs on the server against the
+  App Service's own runtime `app_settings` value - it does run on the
+  server, but the module is still part of the build graph `next
+  build` compiles, and Next.js's `getDefineEnv()` (in
+  `node_modules/next/dist/build/define-env.js`) spreads every
+  `NEXT_PUBLIC_*` variable into **both** the server and client
+  compiler defines with no `isClient` guard around that spread.
+  Empirically confirmed the same way as the sitekey bug: building
+  locally with `NEXT_PUBLIC_GA_ID` unset produced a server chunk with
+  no trace of the value; building with a dummy value set as a real
+  shell environment variable produced a server chunk with that exact
+  literal string inlined. Fixed by extending the same `AzureKeyVault@2`
+  step added for the sitekey bug to also fetch
+  `google-analytics-ga4-devafusion`, and setting `NEXT_PUBLIC_GA_ID`
+  on `BuildWeb`'s build step alongside the existing sitekey variable.
+  `E2ETests`'s build step deliberately leaves it unset (no real or
+  dummy GA4 traffic should originate from a CI-run Playwright suite);
+  `VisualRegression`'s build step already left it unset by default.
+  This also retroactively corrects `ga4-analytics-with-consent-mode`'s
+  own log entry, which had asserted the opposite (that a Server
+  Component's runtime `app_settings` value would be enough) - that
+  assumption was never actually tested against a real build.
 
 ### Turnstile E2E coverage
 Added `tests-e2e/sign-up.spec.ts` exercising the real `TurnstileWidget`

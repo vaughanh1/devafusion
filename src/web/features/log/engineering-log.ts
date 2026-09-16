@@ -33,6 +33,7 @@ import { entry as registrationAndLoginUi } from "./entries/registration-and-logi
 import { entry as blueskySocialLink } from "./entries/bluesky-social-link";
 import { entry as clientLevelAuthHardening } from "./entries/client-level-auth-hardening";
 import { entry as turnstileBuildTimeKeyAndCspFix } from "./entries/turnstile-build-time-key-and-csp-fix";
+import { entry as ga4BuildTimeIdFix } from "./entries/ga4-build-time-id-fix";
 
 export type { LogEntry } from "./types";
 
@@ -76,6 +77,7 @@ const allEntries = [
   blueskySocialLink,
   clientLevelAuthHardening,
   turnstileBuildTimeKeyAndCspFix,
+  ga4BuildTimeIdFix,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
