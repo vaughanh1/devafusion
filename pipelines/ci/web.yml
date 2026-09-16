@@ -113,25 +113,33 @@ stages:
 
           # ADR-0014: NEXT_PUBLIC_* variables are inlined into the
           # client bundle by `next build` itself, not read at runtime -
-          # unlike NEXT_PUBLIC_GA_ID (read inside a Server Component,
-          # so App Service's own runtime app_settings value is enough),
-          # TurnstileWidget is a Client Component, so
-          # NEXT_PUBLIC_TURNSTILE_SITE_KEY must be present in *this*
-          # build step's environment, not just Terraform's app_settings
-          # - confirmed as the real root cause of a live "Turnstile
-          # widget cannot render" bug by reading how Next.js handles
-          # NEXT_PUBLIC_* in client vs. server components. The sitekey
-          # itself is not sensitive (Turnstile's own design - it
-          # identifies the widget to Cloudflare, not a credential), but
-          # is still sourced from Key Vault rather than a plain
-          # variable to stay paired with its secretKey and avoid a
-          # second provisioning location drifting out of sync.
+          # this applies regardless of whether the reading module is a
+          # Server or Client Component, since Next.js's own
+          # getDefineEnv() spreads every NEXT_PUBLIC_* variable into
+          # both the server and client compiler graphs with no
+          # isClient guard (confirmed by inspecting
+          # node_modules/next/dist/build/define-env.js and diffing a
+          # local build's compiled server chunk before/after setting
+          # the var). NEXT_PUBLIC_GA_ID and
+          # NEXT_PUBLIC_TURNSTILE_SITE_KEY must both be present in
+          # *this* build step's environment, not just Terraform's
+          # app_settings, even though google-analytics.tsx has no "use
+          # client" directive - confirmed as the real root cause of a
+          # live "GA has not been initialized" console warning (GA4
+          # silently never rendering) by the same inspection. Neither
+          # value is sensitive on its own (the sitekey identifies the
+          # Turnstile widget to Cloudflare, not a credential; the GA4
+          # ID is a public measurement ID by GA4's own design), but
+          # both stay sourced from Key Vault to remain single-sourced
+          # with the values Terraform's app_settings also reads,
+          # rather than a second, driftable plain-text pipeline
+          # variable.
           - task: AzureKeyVault@2
-            displayName: Fetch Turnstile sitekey from Key Vault
+            displayName: Fetch build-time NEXT_PUBLIC_* values from Key Vault
             inputs:
               azureSubscription: sc-devafusion-terraform
               KeyVaultName: "$(keyVaultName)"
-              SecretsFilter: "turnstile-site-key-devafusion"
+              SecretsFilter: "turnstile-site-key-devafusion,google-analytics-ga4-devafusion"
 
           - script: |
               set -euo pipefail
@@ -162,6 +170,7 @@ stages:
               # postgresql-admin-password-devafusion elsewhere in this
               # repo's pipelines).
               NEXT_PUBLIC_TURNSTILE_SITE_KEY: "$(turnstile-site-key-devafusion)"
+              NEXT_PUBLIC_GA_ID: "$(google-analytics-ga4-devafusion)"
 
           - task: PublishPipelineArtifact@1
             displayName: Publish web application
@@ -274,6 +283,12 @@ stages:
               # dummy "always passes" sitekey, not the real Key
               # Vault-sourced one, since this is a test build.
               NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
+              # Left unset deliberately: this is a test build, and an
+              # unset NEXT_PUBLIC_GA_ID inlines as falsy, which
+              # google-analytics.tsx's own runtime check already
+              # treats as "analytics disabled" - no real or dummy
+              # GA4 traffic should ever originate from a CI-run
+              # Playwright suite.
 
           - script: |
               set -euo pipefail
