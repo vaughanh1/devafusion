@@ -124,7 +124,16 @@ stages:
                     # migrate() function directly, which does propagate
                     # the underlying DrizzleQueryError. Idempotent (IF
                     # NOT EXISTS), so safe to run on every deploy.
-                    cat > /tmp/ensure-citext.mjs <<'EOF'
+                    # Written inside src/web (the current working
+                    # directory, right next to its node_modules) rather
+                    # than /tmp - Node's ESM resolver looks for
+                    # node_modules relative to the IMPORTING FILE's own
+                    # location, not the shell's cwd, so `import pg` from
+                    # a script under /tmp fails with ERR_MODULE_NOT_FOUND
+                    # even though `pg` is installed and CWD has it.
+                    # Confirmed as the actual cause of a real CD failure
+                    # before applying this fix, not a hypothetical.
+                    cat > ./ensure-citext.mjs <<'EOF'
                     import pg from "pg";
                     const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
                     try {
@@ -134,7 +143,8 @@ stages:
                       await client.end();
                     }
                     EOF
-                    node /tmp/ensure-citext.mjs
+                    node ./ensure-citext.mjs
+                    rm ./ensure-citext.mjs
 
                     # Microsoft's own docs: "Changes to the firewall
                     # configuration of an Azure Database for PostgreSQL

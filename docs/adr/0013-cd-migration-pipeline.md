@@ -196,6 +196,22 @@ real and independent of this fix - it protects against a genuinely
 different failure mode that just happened not to be the one that
 occurred here.
 
+## Correction: the citext fix's first CD run also failed, on an unrelated bug
+The `CREATE EXTENSION` fix above was correct, but its first real CD run
+still failed - `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'pg'
+imported from /tmp/ensure-citext.mjs`. The script was written to
+`/tmp`, which has no `node_modules` - Node's ESM resolver looks for
+`node_modules` relative to the *importing file's own location*, not
+the shell's working directory, so `import pg` failed even though `pg`
+was correctly installed one directory up in `src/web/node_modules`
+moments earlier via `npm ci`. This never surfaced during local
+verification because every local test script was run directly from
+inside `src/web`, right next to its own `node_modules` - a difference
+between the verification environment and the real pipeline that should
+have been caught before shipping. Fixed by writing the script to
+`./ensure-citext.mjs` (the current working directory, already `cd`'d
+into `src/web`) instead of `/tmp`, and removing it afterward.
+
 ## Security note
 During diagnosis of the first failed run, the live PostgreSQL admin
 password was inadvertently displayed in plaintext in an interactive
