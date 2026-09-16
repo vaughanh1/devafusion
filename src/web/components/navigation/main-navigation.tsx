@@ -20,7 +20,7 @@ export function MainNavigation() {
     <nav aria-label="Main navigation" className="relative">
       <button
         type="button"
-        className="inline-flex min-h-11 items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:hidden"
+        className="inline-flex min-h-11 cursor-pointer items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:hidden"
         aria-expanded={isOpen}
         aria-controls="main-navigation-links"
         onClick={() => setIsOpen((open) => !open)}
