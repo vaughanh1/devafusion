@@ -66,7 +66,11 @@ Before staging or committing any files, you MUST inspect your local Git status (
 - DO NOT manually run `npm run lint` or `npm run typecheck` inside the chat terminal before committing.
 - Instead, simply execute your atomic Git commit directly. If our Husky pre-commit hooks fail during execution, treat the resulting terminal error stack trace as your debugging prompt, fix the files, and re-commit.
 
-*(Note: PostgreSQL and test suites are planned for future sprints. Do not execute DB migrations or test-runner scripts until explicitly instructed).*
+### 🧪 Test Suite Checks
+
+- Husky's pre-commit hook runs `npm run lint` and `npm run typecheck` only — it does **not** run Vitest or Playwright. Any change touching `src/web/**` must be manually validated before committing: run `npm run test:unit` (Vitest, `src/web/__tests__/AGENTS.md`) for the affected suite(s).
+- If the change alters the rendered output of anything captured by an existing `*.visual.spec.ts` baseline (e.g. `SiteFooter`, or any component reachable from a full-page `toHaveScreenshot()` snapshot such as `home-layout.visual.spec.ts`), run that spec against the pinned Docker image (`src/web/__tests__/AGENTS.md`'s Baseline bootstrap steps) and inspect whether it passes within the configured `maxDiffPixelRatio` or requires a new committed baseline PNG. Do not skip this check on the assumption that a small visual change is "probably fine" — verify it against the actual pinned-Playwright-image run.
+- DB migrations remain gated behind the CD pipeline's manual-approval environment (`infrastructure/AGENTS.md` §PostgreSQL) — do not run `drizzle-kit migrate` against the live server from a local terminal.
 
 ### 🔒 Automated Secret Scanning (Section 5a)
 

@@ -7,7 +7,7 @@ import { legalContactEmail, primaryContactEmail } from "@/features/brand/social-
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Contact Devafusion for general enquiries, privacy questions, or to connect on GitHub, X or LinkedIn.",
+    "Contact Devafusion for general enquiries, privacy questions, or to connect on GitHub, Bluesky, X or LinkedIn.",
   alternates: { canonical: "/contact" },
 };
 

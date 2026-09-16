@@ -30,6 +30,7 @@ import { entry as localPostgresMigrationTesting } from "./entries/local-postgres
 import { entry as betterAuthIdentityAndSelfHostedMfa } from "./entries/better-auth-identity-and-self-hosted-mfa";
 import { entry as cdMigrationPipeline } from "./entries/cd-migration-pipeline";
 import { entry as registrationAndLoginUi } from "./entries/registration-and-login-ui";
+import { entry as blueskySocialLink } from "./entries/bluesky-social-link";
 
 export type { LogEntry } from "./types";
 
@@ -70,6 +71,7 @@ const allEntries = [
   betterAuthIdentityAndSelfHostedMfa,
   cdMigrationPipeline,
   registrationAndLoginUi,
+  blueskySocialLink,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

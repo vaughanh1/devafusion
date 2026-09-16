@@ -114,6 +114,17 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
   }
 }
 
+resource "azurerm_dns_txt_record" "devafusion_net_atproto" {
+  name                = "_atproto"
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = 300
+
+  record {
+    value = data.azurerm_key_vault_secret.bluesky_verification_devafusion_net.value
+  }
+}
+
 resource "azurerm_dns_cname_record" "devafusion_com_dkim_selector1" {
   name                = "selector1._domainkey"
   zone_name           = azurerm_dns_zone.devafusion_com.name
