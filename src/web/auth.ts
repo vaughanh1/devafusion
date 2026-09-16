@@ -16,4 +16,20 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  user: {
+    // UK GDPR Article 17 right to erasure - password re-confirmation
+    // only, no sendDeleteAccountVerification email callback (this
+    // project has no email-sending infrastructure yet, and Better
+    // Auth's own deleteUser route checks that option with `?.`, so
+    // omitting it entirely skips the email step and deletes
+    // immediately once the user's session is fresh/password is
+    // confirmed). db/schema.ts's session/account/user_security tables
+    // all carry `onDelete: "cascade"` foreign keys to user.id -
+    // verified directly against a real local Postgres that deleting
+    // the user row cascades to all three with no application code
+    // needed, so no beforeDelete/afterDelete hook is required here.
+    deleteUser: {
+      enabled: true,
+    },
+  },
 });

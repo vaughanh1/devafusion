@@ -79,7 +79,7 @@ describe("AccountNav", () => {
     );
   });
 
-  it("shows a log-out button when a session exists, which signs out and redirects home", async () => {
+  it("shows an account link and log-out button when a session exists, which signs out and redirects home", async () => {
     useSessionMock.mockReturnValue({
       data: { user: { id: "u1" } },
       isPending: false,
@@ -87,6 +87,11 @@ describe("AccountNav", () => {
     usePathnameMock.mockReturnValue("/log");
     signOutMock.mockResolvedValue(undefined);
     render(<AccountNav />);
+
+    expect(screen.getByRole("link", { name: /account/i })).toHaveAttribute(
+      "href",
+      "/account",
+    );
 
     fireEvent.click(screen.getByRole("button", { name: /log out/i }));
 

@@ -48,13 +48,21 @@ export function AccountNav() {
   }
 
   return (
-    <button
-      type="button"
-      disabled={isLoggingOut}
-      onClick={handleLogOut}
-      className="inline-flex min-h-11 items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isLoggingOut ? "Logging out…" : "Log out"}
-    </button>
+    <div className="flex items-center gap-2">
+      <Link
+        href="/account"
+        className="inline-flex min-h-11 items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+      >
+        Account
+      </Link>
+      <button
+        type="button"
+        disabled={isLoggingOut}
+        onClick={handleLogOut}
+        className="inline-flex min-h-11 items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isLoggingOut ? "Logging out…" : "Log out"}
+      </button>
+    </div>
   );
 }
