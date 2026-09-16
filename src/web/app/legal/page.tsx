@@ -6,7 +6,7 @@ import { legalContactEmail } from "@/features/brand/social-links";
 export const metadata: Metadata = {
   title: "Privacy & Cookies",
   description:
-    "How Devafusion uses cookies and Google Analytics, and the choices available to you.",
+    "How Devafusion handles account data, cookies, and Google Analytics, and the choices and rights available to you.",
 };
 
 export default function LegalPage() {
@@ -54,6 +54,47 @@ export default function LegalPage() {
 
         <div>
           <h2 className="text-xl font-semibold text-foreground">
+            Account data
+          </h2>
+          <p className="mt-2">
+            If you create an account, we collect the name and email address
+            you provide, and store your password as an irreversible hash -
+            never in a form we or anyone else could read back. We process
+            this data to provide the account service you have requested
+            (our lawful basis is contract, under UK GDPR Article 6(1)(b)),
+            and keep it for as long as your account exists.
+          </p>
+          <p className="mt-2">
+            Signing in sets a session cookie so the site can recognise you
+            as logged in. This cookie is strictly necessary to provide the
+            account service you asked for and is exempt from active consent
+            under PECR, but we disclose it here regardless: it stores only
+            a random session token, is not used for tracking or analytics,
+            and is not shared with any third party.
+          </p>
+          <p className="mt-2">
+            You have the right to access, correct, export, or delete your
+            account data at any time. Visit{" "}
+            <Link href="/account" className="underline hover:text-foreground">
+              your account page
+            </Link>{" "}
+            to download a copy of everything held on your account (UK GDPR
+            Article 15) or permanently delete your account (UK GDPR Article
+            17) - deletion is immediate and cannot be undone. If you need
+            help with either, or want to exercise any other right under UK
+            GDPR (rectification, restriction, objection), email{" "}
+            <a
+              href={`mailto:${legalContactEmail}`}
+              className="underline hover:text-foreground"
+            >
+              {legalContactEmail}
+            </a>
+            ; we will respond within one month as required by law.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">
             Accessibility theme preference
           </h2>
           <p className="mt-2">
@@ -75,12 +116,12 @@ export default function LegalPage() {
             What is not collected
           </h2>
           <p className="mt-2">
-            This site does not sell or share visitor data with third
-            parties beyond Google Analytics, does not run advertising, and
-            does not use any tracking cookies other than the analytics
-            cookies described above. The accessibility preference cookies
-            described above store only your chosen theme and text size and
-            are not used for tracking.
+            This site does not sell or share your data with third parties
+            beyond Google Analytics, does not run advertising, and does
+            not use any tracking cookies other than the analytics cookies
+            described above. The accessibility preference and session
+            cookies described above store only your chosen theme, text
+            size, or session token, and are not used for tracking.
           </p>
         </div>
 

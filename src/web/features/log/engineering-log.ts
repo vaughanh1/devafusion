@@ -29,6 +29,7 @@ import { entry as drizzleOrmToolingSetup } from "./entries/drizzle-orm-tooling-s
 import { entry as localPostgresMigrationTesting } from "./entries/local-postgres-migration-testing";
 import { entry as betterAuthIdentityAndSelfHostedMfa } from "./entries/better-auth-identity-and-self-hosted-mfa";
 import { entry as cdMigrationPipeline } from "./entries/cd-migration-pipeline";
+import { entry as registrationAndLoginUi } from "./entries/registration-and-login-ui";
 
 export type { LogEntry } from "./types";
 
@@ -68,6 +69,7 @@ const allEntries = [
   localPostgresMigrationTesting,
   betterAuthIdentityAndSelfHostedMfa,
   cdMigrationPipeline,
+  registrationAndLoginUi,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
