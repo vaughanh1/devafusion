@@ -45,6 +45,22 @@ parameters:
 pool:
   vmImage: ubuntu-latest
 
+# LighthouseCI's own "postgres" service container (declared once here,
+# referenced by name via that job's services: key) - real Postgres
+# reachable via localhost:5432 on a noncontainer job, Microsoft's own
+# documented pattern for exactly this. Scoped as a resource rather than
+# an inline container so it stays visible at the top of the file
+# alongside the pipeline's other shared declarations.
+resources:
+  containers:
+    - container: postgres
+      image: postgres:16
+      ports:
+        - 5432:5432
+      env:
+        POSTGRES_PASSWORD: lighthouse-ci-local
+      options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+
 variables:
   webWorkingDirectory: "$(Build.SourcesDirectory)/src/web"
   webArtifactDirectory: "$(Build.ArtifactStagingDirectory)/web"
@@ -419,6 +435,21 @@ stages:
       - job: LighthouseCI
         displayName: Lighthouse CI (accessibility, best practices, SEO, performance)
         dependsOn: []
+        # Real Postgres reachable via localhost:5432 (noncontainer job -
+        # Microsoft's own documented pattern, root AGENTS.md's Local
+        # Postgres for Migration Testing / src/web/AGENTS.md precedent
+        # for this exact image/version; the "postgres" service container
+        # itself is declared once at the top-level resources.containers
+        # block below and only referenced here by name). Without this,
+        # every page's AccountNav mounts authClient.useSession() -> GET
+        # /api/auth/get-session -> Better Auth's drizzleAdapter querying
+        # a database that doesn't exist, which 500s and trips
+        # Lighthouse's errors-in-console audit on every run (found via
+        # the exported HTML reports, root AGENTS.md's Log-Driven
+        # Development triage) - production always has a real DB, so
+        # this was a fixture-environment gap, not a live-site bug.
+        services:
+          postgres: postgres
 
         steps:
           - checkout: self
@@ -458,6 +489,36 @@ stages:
               # production traffic.
               NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
 
+          # Same citext gap docs/adr/0013 found on the live server -
+          # azurerm_postgresql_flexible_server_configuration's
+          # allowlisting has no equivalent on a fresh postgres:16
+          # container either, so the "email" "citext" column in
+          # 0000_better_auth_identity_and_mfa.sql needs the extension
+          # created before drizzle-kit migrate runs. Idempotent (IF NOT
+          # EXISTS), safe to run every time.
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              cat > ./ensure-citext.mjs <<'EOF'
+              import pg from "pg";
+              const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+              try {
+                await client.connect();
+                await client.query("CREATE EXTENSION IF NOT EXISTS citext;");
+              } finally {
+                await client.end();
+              }
+              EOF
+              node ./ensure-citext.mjs
+              rm ./ensure-citext.mjs
+
+              npm run db:migrate
+            displayName: Migrate Lighthouse fixture Postgres
+            env:
+              DATABASE_URL: "postgresql://postgres:lighthouse-ci-local@localhost:5432/postgres"
+
           - script: |
               set -euo pipefail
 
@@ -473,6 +534,28 @@ stages:
               # .lighthouserc.js's startServerCommand, so it needs this
               # set in its own environment too.
               FORM_TIMING_TOKEN_SECRET: "lighthouse-ci-fixture-key-not-a-real-secret"
+              # Real fixture Postgres started above - auth.ts's
+              # drizzleAdapter needs this so AccountNav's
+              # authClient.useSession() call (mounted on every page via
+              # the header) succeeds instead of 500ing.
+              DATABASE_URL: "postgresql://postgres:lighthouse-ci-local@localhost:5432/postgres"
+              # better-auth throws BetterAuthError without this
+              # (create-context.mjs's validateSecret) - a throwaway
+              # fixture value, only ever used against the ephemeral
+              # CI-local Postgres container above.
+              BETTER_AUTH_SECRET: "lighthouse-ci-fixture-better-auth-secret-value-32chars"
+              # two-factor-secret-cipher.ts's loadKey() requires exactly
+              # 32 raw bytes once base64-decoded - never actually
+              # exercised by lhci's 3 audited pages (none touch MFA),
+              # but auth.ts's betterAuth({ database: drizzleAdapter(db) })
+              # call is evaluated at module load regardless.
+              MFA_ENCRYPTION_KEY: "bGlnaHRob3VzZS1jaS1maXh0dXJlLW1mYS1rZXktMzI="
+              # Cloudflare's own documented dummy "always passes" secret
+              # key (same pair as playwright.config.ts's webServer.env)
+              # - auth.ts's captcha plugin reads this at module load via
+              # a non-null assertion, so it must be set even though no
+              # audited page renders TurnstileWidget.
+              TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA"
 
           # lhci's own filenames (lhr-<timestamp>.html, one per run - 9
           # total for 3 pages x 3 runs) don't say which page they're for.
