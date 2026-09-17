@@ -70,12 +70,16 @@ the test runners so a suite can be included/excluded from the Azure
 DevOps "Run Pipeline" variables panel without a commit to `develop`:
 
 - `TEST_DB_ACTIONS` (default unset/`false`) — gates any suite that
-  depends on the ephemeral PostgreSQL Docker sandbox described in
-  `pipelines/ci/web.yml`. There is no PostgreSQL integration yet; this
-  flag exists so the first such suite only has to check it, not invent
-  the wiring.
+  depends on the ephemeral PostgreSQL Docker sandbox
+  (`pipelines/ci/web.yml`'s `E2ETests` job runs a real `postgres:16`
+  service container, migrated before Playwright starts — the same
+  `resources.containers: postgres` service the `LighthouseCI` job also
+  uses). Defaults to off so this class of suite never writes real rows
+  on an ordinary PR run; enable it from the "Run Pipeline" variables
+  panel when it needs to actually run.
 - `TEST_MFA_FLOWS` (default unset/`false`) — gates any suite depending on
-  a future MFA/auth flow. Same rationale.
+  the MFA matrix (`tests-e2e/mfa-flow.spec.ts`). Same sandbox, same
+  rationale.
 - `PLAYWRIGHT_BROWSER_TARGET` (default `chromium`) — selects the
   Playwright project/browser engine; see `playwright.config.ts`.
 - Any new toggle follows the same `TEST_<AREA>` naming and must default

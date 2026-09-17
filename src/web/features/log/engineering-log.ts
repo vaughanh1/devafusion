@@ -44,6 +44,7 @@ import { entry as mfaMatrixFrontendAndAccessibility } from "./entries/mfa-matrix
 import { entry as mfaEmailSenderAndCopyFixes } from "./entries/mfa-email-sender-and-copy-fixes";
 import { entry as mfaRouteAndCryptoTestCoverage } from "./entries/mfa-route-and-crypto-test-coverage";
 import { entry as mfaE2eVerificationAndDnsHardening } from "./entries/mfa-e2e-verification-and-dns-hardening";
+import { entry as mfaCiSandboxAndDeletionHandlerCoverage } from "./entries/mfa-ci-sandbox-and-deletion-handler-coverage";
 
 export type { LogEntry } from "./types";
 
@@ -98,6 +99,7 @@ const allEntries = [
   mfaEmailSenderAndCopyFixes,
   mfaRouteAndCryptoTestCoverage,
   mfaE2eVerificationAndDnsHardening,
+  mfaCiSandboxAndDeletionHandlerCoverage,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

@@ -8,10 +8,12 @@ import * as OTPAuth from "otpauth";
 // added for anyone who cannot scan a QR code), confirm enrolment with
 // a real otpauth-generated code, then log back in and pass the
 // sequential-matrix challenge with a fresh code. Gated behind
-// TEST_MFA_FLOWS (src/web/__tests__/AGENTS.md's documented toggle,
-// previously reserved but unused) since pipelines/ci/web.yml's
-// E2ETests job has no PostgreSQL sandbox wired up yet - same gating
-// pattern sign-up.spec.ts already established for TEST_DB_ACTIONS.
+// TEST_MFA_FLOWS (src/web/__tests__/AGENTS.md's documented toggle) -
+// runs for real against pipelines/ci/web.yml's E2ETests job's own
+// postgres service container when enabled from the "Run Pipeline"
+// variables panel, same gating pattern sign-up.spec.ts already
+// established for TEST_DB_ACTIONS. Defaults to false so this suite
+// never writes real rows on an ordinary PR run.
 const shouldRun = process.env.TEST_MFA_FLOWS === "true";
 
 test.describe("MFA matrix", () => {

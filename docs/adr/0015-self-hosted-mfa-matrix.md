@@ -319,6 +319,36 @@ factor forever. Fixed by resolving the actually-satisfied factor as
 was used to satisfy it, and completing/filtering against that
 resolved value instead of the raw request field.
 
+## Fifth addendum: E2ETests CI sandbox wired up, mfa-deletion-handler test coverage closed
+
+### `TEST_DB_ACTIONS`/`TEST_MFA_FLOWS` now run for real in CI, not only when a human sets them locally
+`pipelines/ci/web.yml`'s `E2ETests` job previously passed these two
+toggles through as env vars with nothing for the connection they gate to
+reach - `sign-up.spec.ts`'s own comment stated this outright ("does not
+wire up a PostgreSQL sandbox"). Wired a real `postgres:16` service
+container into the job (the exact same `resources.containers: postgres`
+service the pre-existing `LighthouseCI` job already uses), added the
+same `citext` extension + `drizzle-kit migrate` step that job already
+runs, and passed `DATABASE_URL`/`BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`/
+`MFA_ENCRYPTION_KEY`/`TURNSTILE_SECRET_KEY`/`FORM_TIMING_TOKEN_SECRET`
+into the Playwright run step. Verified this wiring actually works, not
+just that the YAML parses: ran the exact same citext+migrate+env
+sequence locally against a fresh `postgres:16` container with
+`TEST_DB_ACTIONS=true TEST_MFA_FLOWS=true`, and the full 12-spec
+Playwright suite passed. Updated `sign-up.spec.ts`, `mfa-flow.spec.ts`,
+and `src/web/__tests__/AGENTS.md`'s own toggle documentation to stop
+claiming no sandbox exists.
+
+### `mfa-deletion-handler.ts` test coverage gap closed
+The one remaining untested security-critical module from the third
+addendum's coverage-closing pass. Added a real-PGlite test suite
+(`features/auth/mfa/__tests__/mfa-deletion-handler.test.ts`, same
+pattern as the other repository tests) covering: the full cascade
+across `user_security`/`backup_codes`/`trusted_devices`, the
+`mfa_data_deleted` audit log entry surviving the deletion it describes,
+a distinct `performedBy` for a future admin-initiated deletion, that
+another user's rows are untouched, and the no-existing-rows case.
+
 ## Fourth addendum: real e2e run executed, nested-form bug fixed, DNS name-format assumption hardened away
 
 ### `tests-e2e/mfa-flow.spec.ts` was run for real, and it found a genuine production bug
