@@ -13,7 +13,17 @@
    * because it is not one of the three explicit profiles.
    */
   --surface-border: #8f8f99;
-  --accent: #0891b2;
+  /*
+   * #077e9c, not the brand's lighter #0891b2 - #0891b2 against
+   * --accent-foreground #ffffff measures 3.68:1, below WCAG's 4.5:1
+   * text bar (axe-core's color-contrast rule caught this on the
+   * cookie banner's Accept button, tests-e2e/accessibility.spec.ts).
+   * Same cyan hue family, deepened just enough to clear AA in both
+   * text-on-accent and accent-on-background directions (contrast
+   * ratio is symmetric) - verified against the real WCAG
+   * relative-luminance formula, not eyeballed.
+   */
+  --accent: #077e9c;
   --accent-secondary: #7c3aed;
   --accent-foreground: #ffffff;
   --muted: #52525b;

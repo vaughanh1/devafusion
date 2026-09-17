@@ -123,3 +123,15 @@ DevOps "Run Pipeline" variables panel without a commit to `develop`:
   publishes the Docker-rendered PNG as the
   `visual-regression-baseline-candidates` pipeline artifact on failure —
   download and commit that instead of a locally-rendered substitute.
+- **Accessibility audits (`@a11y` tag)** — `accessibility.spec.ts` runs
+  `@axe-core/playwright` against every audited route and asserts zero
+  WCAG 2.1 AA violations. Unlike `@visual`, this needs no Docker
+  pinning (axe-core's ruleset does not depend on font rendering) and
+  runs in the default `chromium` project on the bare hosted agent, as
+  part of `pipelines/ci/web.yml`'s `E2ETests` job (no `--grep` filter
+  there, so it runs automatically alongside every other spec). Run it
+  in isolation locally with `npx playwright test --grep @a11y`. See
+  `src/web/AGENTS.md`'s "Automated Lighthouse & axe-core Audits"
+  section for the exclusion policy (a named WCAG exception only, never
+  convenience) and the separate Lighthouse CI (`.lighthouserc.js`)
+  gates on accessibility/best-practices/SEO/performance.

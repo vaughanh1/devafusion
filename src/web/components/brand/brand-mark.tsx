@@ -71,10 +71,18 @@ export function BrandMark({ size = "compact" }: BrandMarkProps) {
 
       <div className="flex flex-col">
         <p
+          data-brand-wordmark
           className={`font-extrabold tracking-tight text-foreground ${
             isHero ? "text-3xl sm:text-4xl" : "text-lg"
           }`}
         >
+          {/*
+            data-brand-wordmark: excluded from the automated axe scan
+            (tests-e2e/accessibility.spec.ts) under WCAG 2.1 SC 1.4.3's
+            explicit logo/brand-name exception - see that file's
+            comment for why recoloring, not excluding, would be wrong
+            here.
+          */}
           Deva
           <span style={{ color: "#d19b2f" }}>fusion</span>
           <span
