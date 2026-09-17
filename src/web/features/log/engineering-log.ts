@@ -45,6 +45,7 @@ import { entry as mfaEmailSenderAndCopyFixes } from "./entries/mfa-email-sender-
 import { entry as mfaRouteAndCryptoTestCoverage } from "./entries/mfa-route-and-crypto-test-coverage";
 import { entry as mfaE2eVerificationAndDnsHardening } from "./entries/mfa-e2e-verification-and-dns-hardening";
 import { entry as mfaCiSandboxAndDeletionHandlerCoverage } from "./entries/mfa-ci-sandbox-and-deletion-handler-coverage";
+import { entry as ciFmtCheckDirectoryMismatch } from "./entries/ci-fmt-check-directory-mismatch";
 
 export type { LogEntry } from "./types";
 
@@ -100,6 +101,7 @@ const allEntries = [
   mfaRouteAndCryptoTestCoverage,
   mfaE2eVerificationAndDnsHardening,
   mfaCiSandboxAndDeletionHandlerCoverage,
+  ciFmtCheckDirectoryMismatch,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

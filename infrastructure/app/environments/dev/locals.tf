@@ -1,12 +1,12 @@
 locals {
   location_short = "uks"
 
-  resource_group_name     = "rg-${var.product}-${var.environment}-${local.location_short}"
-  app_service_plan_name   = "asp-${var.product}-${var.environment}-${local.location_short}"
-  key_vault_name          = "kv-${var.product}-${var.environment}-${local.location_short}"
-  postgresql_server_name  = "psql-${var.product}-${var.environment}-${local.location_short}"
-  automation_account_name = "aa-${var.product}-${var.environment}-${local.location_short}"
-  email_service_name      = "acsmail-${var.product}-${var.environment}"
+  resource_group_name        = "rg-${var.product}-${var.environment}-${local.location_short}"
+  app_service_plan_name      = "asp-${var.product}-${var.environment}-${local.location_short}"
+  key_vault_name             = "kv-${var.product}-${var.environment}-${local.location_short}"
+  postgresql_server_name     = "psql-${var.product}-${var.environment}-${local.location_short}"
+  automation_account_name    = "aa-${var.product}-${var.environment}-${local.location_short}"
+  email_service_name         = "acsmail-${var.product}-${var.environment}"
   communication_service_name = "acs-${var.product}-${var.environment}"
 
   primary_domain   = "devafusion.net"

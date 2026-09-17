@@ -319,6 +319,39 @@ factor forever. Fixed by resolving the actually-satisfied factor as
 was used to satisfy it, and completing/filtering against that
 resolved value instead of the raw request field.
 
+## Sixth addendum: real Azure DevOps CI run found a formatting gap local checks missed
+
+Opening the actual PR and letting `devafusion-infrastructure-ci` run against
+it (rather than only ever running `terraform fmt -check`/`validate` locally)
+surfaced a real failure: `terraform fmt -check` exited 3 on `email.tf` and
+`locals.tf` (misaligned `=` columns after edits across earlier addenda never
+re-triggered a fresh `terraform fmt`).
+
+Root cause of why local checks never caught this: every local
+`terraform fmt -check` run in this slice was executed from
+`infrastructure/app` (checking that directory non-recursively, or with
+`-recursive` across all subdirectories) - but
+`pipelines/ci/infrastructure.yml`'s `terraformWorkingDirectory` is
+`infrastructure/app/environments/dev`, and its `terraform fmt -check` step
+has no `-recursive` flag. `terraform fmt` without `-recursive` only checks
+the current directory, not subdirectories - so checking from
+`infrastructure/app` was checking a different (and in this case
+non-representative) file set than CI's actual `cd environments/dev &&
+terraform fmt -check` ever does. Reproduced the exact CI failure locally
+only after fetching the real PR merge ref (`refs/pull/64/merge`), checking
+it out into a disposable worktree, downloading the exact Terraform version
+CI's `TerraformInstaller@1` (`latest` → `1.16.3`) resolved to, and running
+`terraform fmt -check` from the correct `environments/dev` directory.
+Fixed with `terraform fmt` (canonical `=`-column alignment) on both files -
+confirmed via `Compare-Object` that the only changes are whitespace.
+
+**Process correction for future infra changes in this repo**: always run
+`terraform fmt -check` (and `validate`) from
+`infrastructure/app/environments/dev` specifically - matching
+`terraformWorkingDirectory` exactly - not from `infrastructure/app`, which
+checks a different, broader/non-representative scope that can pass locally
+while CI still fails.
+
 ## Fifth addendum: E2ETests CI sandbox wired up, mfa-deletion-handler test coverage closed
 
 ### `TEST_DB_ACTIONS`/`TEST_MFA_FLOWS` now run for real in CI, not only when a human sets them locally
