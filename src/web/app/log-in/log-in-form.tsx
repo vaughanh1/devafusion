@@ -4,16 +4,27 @@ import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
 import { FormError } from "@/components/auth/form-error";
+import { MfaChallengeForm } from "@/components/auth/mfa-challenge-form";
 import { PasswordField } from "@/components/auth/password-field";
 import type { TurnstileWidgetHandle } from "@/components/auth/turnstile-widget";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
-import { authClient } from "@/features/auth/auth-client";
 
 type LogInFormProps = {
   redirectPath: string;
   formTimingToken: string;
 };
 
+type MfaChallengeState = {
+  pendingToken: string;
+  factorNeeded: "totp" | "email" | "backup_code";
+};
+
+// Calls /api/auth/login-step1 (the MFA-matrix-aware policy
+// evaluation route) rather than Better Auth's own
+// authClient.signIn.email() directly - the latter always mints and
+// releases a full session immediately, with no hook for this
+// project's own sequential-factor challenge. login-step1 withholds
+// the session until the matrix is satisfied; see docs/adr/0015.
 export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
   const router = useRouter();
   const emailId = useId();
@@ -25,6 +36,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeState | null>(null);
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
 
   // See sign-up-form.tsx's identical comment - a spent/stale
@@ -46,28 +58,32 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
     }
 
     try {
-      const { error: signInError } = await authClient.signIn.email({
-        email,
-        password,
-        callbackURL: redirectPath,
-        fetchOptions: {
-          headers: { "x-captcha-response": captchaToken },
-          // See sign-up-form.tsx's identical comment - formTimingToken
-          // is merged into the request body via fetchOptions.body by
-          // Better Auth's dynamic path proxy, since it isn't part of
-          // signIn.email's own typed parameters.
-          body: { formTimingToken },
-        },
+      const response = await fetch("/api/auth/login-step1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, captchaToken, formTimingToken }),
       });
 
-      if (signInError) {
-        // Deliberately generic rather than echoing Better Auth's own
-        // message verbatim here - it can distinguish "no such user"
-        // from "wrong password" in ways that enable account
-        // enumeration. A single message for any credential failure.
+      if (!response.ok) {
+        // Deliberately generic rather than echoing the server's own
+        // message verbatim - distinguishing "no such user" from
+        // "wrong password" enables account enumeration, the same
+        // rationale this form already applied before this route
+        // existed.
         setError("Invalid email or password.");
         setIsSubmitting(false);
         resetCaptcha();
+        return;
+      }
+
+      const body = await response.json();
+
+      if (body.mfaRequired) {
+        setMfaChallenge({
+          pendingToken: body.pendingToken,
+          factorNeeded: body.nextFactorNeeded,
+        });
+        setIsSubmitting(false);
         return;
       }
 
@@ -78,6 +94,16 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
       setIsSubmitting(false);
       resetCaptcha();
     }
+  }
+
+  if (mfaChallenge) {
+    return (
+      <MfaChallengeForm
+        redirectPath={redirectPath}
+        initialPendingToken={mfaChallenge.pendingToken}
+        initialFactorNeeded={mfaChallenge.factorNeeded}
+      />
+    );
   }
 
   return (

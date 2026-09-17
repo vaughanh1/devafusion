@@ -132,14 +132,142 @@ compared, only decrypted and fed into `otpauth`.
 - **Resend** - initially chosen, then rejected once its actual region
   behaviour was checked (see this ADR's own Resend rationale above):
   a latency-optimization region only, not a data-residency guarantee.
-- **A custom verified domain (`mfa.devafusion.com`) instead of Azure's
-  managed `*.azurecomm.net` domain** - deferred, not rejected outright:
-  a custom domain needs real SPF/DKIM/DMARC DNS records on a live
-  zone, a materially larger change than this slice's own scope. The
-  Azure-managed domain's lower deliverability ceiling is an accepted
-  trade-off for an MFA OTP email (checked once per login by a user
-  actively expecting it), unlike a marketing or first-contact
-  transactional email where inbox placement matters far more.
+- **The Azure-managed `*.azurecomm.net` domain instead of a custom
+  verified domain** - reversed after initial acceptance. A first pass
+  of this ADR accepted the Azure-managed domain's lower deliverability
+  ceiling as a trade-off for zero DNS setup, but this was overridden
+  by an explicit product decision: MFA emails must come from
+  `donotreply@devafusion.net`, a real, brand-trusted sender. See the
+  Addendum below for the full custom-domain implementation.
+
+## Addendum: custom domain, QR-as-image, accessible OTP formatting, missing frontend
+
+A first pass of this slice shipped only the backend routes/repositories
+with no frontend wiring, no e2e coverage, an Azure-managed sender
+domain, a bare `otpauth://` URI returned instead of a scannable image,
+and no UK GDPR-facing disclosure of any of it on `/legal`. This
+addendum closes every one of those gaps.
+
+### Custom domain: donotreply@devafusion.net
+`infrastructure/app/modules/email`'s `azurerm_email_communication_service_domain`
+now uses `domain_management = "CustomerManaged"` against `devafusion.net`
+rather than `AzureManagedDomain`. The module exposes Azure's own
+computed `verification_records` (domain-ownership TXT, SPF TXT, DKIM/
+DKIM2 CNAME) as an output, and `environments/dev/dns.tf` wires each
+one into a real `azurerm_dns_*` resource on the existing
+`devafusion_net` zone - entirely independent of `devafusion.com`'s
+separate Microsoft 365 DKIM/DMARC records (different domain, different
+mail system). DMARC is a literal `p=none` record (Azure's own
+verification does not require a specific DMARC policy, only that one
+exists), matching the same monitor-only stance already used for
+`devafusion.com`. Verification is automatic once the DNS records are
+live (Microsoft's documented 15-30 minute propagation window) - no
+manual "click verify" step. The sender's local-part stays `donotreply`
+(not `noreply`) - a custom Sender Username for a different local-part
+requires a separate Azure resource type the `azurerm` Terraform
+provider does not support (Portal/CLI/PowerShell only), and
+`donotreply@devafusion.net` was confirmed as acceptable rather than
+introducing an unsupported-in-Terraform manual step.
+
+**Open item, not yet verified**: `dns.tf`'s `trimsuffix()` normalisation
+of `verification_records[].name` assumes Azure returns a fully-
+qualified name; this was not confirmed against a live subscription (see
+that file's own CAVEAT comment). Must be checked via `terraform plan`
+against a real Azure subscription before this is ever applied.
+
+### QR code is now a real image, with a text fallback
+`features/auth/mfa/totp-qr-code.ts` (the `qrcode` npm package) renders
+the enrolment `otpauth://` URI as a PNG data URI - `enrol/route.ts`
+now returns `qrCodeDataUri` instead of a bare URI string, and
+`components/account/totp-enrolment.tsx` renders it via `next/image`
+(`unoptimized`, since a data URI has nothing for the image optimizer
+to fetch) with accessible `alt` text that includes the manual-entry
+secret. The base32 secret (`manualEntrySecret`) is also always shown
+as selectable text in a `<details>` disclosure, independent of the
+image, so a screen-reader user, a client that strips images, or
+anyone who simply cannot scan a QR code can still complete enrolment
+by typing the secret into their authenticator app manually.
+
+### Accessible OTP formatting
+`features/auth/mfa/format-otp-for-accessibility.ts` spaces every digit
+of a numeric code ("1 2 3 4 5 6", never "123456" or "123 456") - a
+bare digit run is read by every major screen reader (and spoken aloud
+by a sighted user) as one large number, not six discrete characters.
+Applied to the email-OTP's plain-text body (`send-email-otp.ts`) and
+matched by `MfaChallengeForm`'s own input handling, which strips
+spaces back out before submitting so a user who copies the
+accessible-formatted text verbatim still succeeds. Backup codes
+(alphanumeric, not digits, already using a 0/O/1/I-free alphabet) have
+no equivalent grouping concern and are left as-is, each rendered on
+its own line so a screen reader still announces them individually
+rather than as one run-on sentence.
+
+### The missing frontend
+No page ever called `login-step1`, `two-factor/enrol`,
+`two-factor/confirm`, or `two-factor/verify` - `log-in-form.tsx` still
+called Better Auth's own `authClient.signIn.email()` directly, and
+`MfaSettingsDashboard` saved policy changes with no enrolment flow
+behind them. Added:
+- `components/auth/mfa-challenge-form.tsx` - the sequential-matrix
+  challenge UI, looping on a `202` response's `nextFactorNeeded`/
+  `pendingToken` without a full page reload, and navigating away only
+  once the server returns `verified: true`.
+- Rewrote `app/log-in/log-in-form.tsx` to call `login-step1` and
+  render `MfaChallengeForm` when `mfaRequired` comes back true.
+- `components/account/totp-enrolment.tsx` - calls `enrol` then
+  `confirm`, rendering the QR/secret/backup codes and the confirmation
+  input; wired into `MfaSettingsDashboard` when TOTP is selected.
+
+**A real bug found and fixed while wiring this up**: `auth.ts`'s
+`hooks.before` timing-token check (`features/auth/form-timing-token.ts`)
+runs for every `auth.api.*` call, including a direct
+`auth.api.signInEmail()` call from application code, not only requests
+dispatched through Better Auth's own router - confirmed directly
+against `better-auth`'s compiled `dispatch.mjs` (`runBeforeHooks` reads
+the raw, not-yet-validated input body before the endpoint's own zod
+schema runs, so an extra field survives). This is a different
+mechanism from the `captcha` plugin's `onRequest` hook, which is
+router-only and does **not** fire for a direct call (already
+documented above). `login-step1` was silently missing
+`formTimingToken` entirely - every real call to it would have failed
+closed with `FORM_TIMING_CHECK_FAILED`, a bug that had no test
+coverage until this addendum's e2e spec.
+
+### Legal disclosure
+`/legal` had zero mention of MFA - no sub-processor disclosure for
+Azure Communication Services, no lawful basis stated, no disclosure
+of the trusted-device cookie or the in-memory progress cache. Added a
+dedicated "Multi-factor authentication (MFA)" section following the
+exact disclosure pattern the existing Cloudflare Turnstile section
+already established (processor name, lawful basis, cookie purpose,
+data minimisation), and updated "What is not collected" to name Azure
+Communication Services alongside Google Analytics/Turnstile as the
+only third parties involved.
+
+### Test coverage added
+Component tests for `MfaChallengeForm`, `TotpEnrolment`, and
+`MfaSettingsDashboard` (previously untested entirely), unit tests for
+the two new pure helpers (`format-otp-for-accessibility.ts`,
+`totp-qr-code.ts` - the latter against the real `qrcode` library, not
+a mock), a rewritten `log-in-form.test.tsx` (mocking `fetch` instead of
+the now-unused `authClient.signIn.email`), and a `TEST_MFA_FLOWS`-gated
+e2e spec (`tests-e2e/mfa-flow.spec.ts`) exercising the real sign-up →
+enrol → confirm → log-out → log-in → challenge round trip against a
+real Postgres connection, using the real `otpauth` library to generate
+valid codes - the same gating pattern `sign-up.spec.ts` already
+established for `TEST_DB_ACTIONS`, since `pipelines/ci/web.yml`'s
+`E2ETests` job has no PostgreSQL sandbox wired up yet.
+
+### Cost correction
+Azure Communication Services Email has **no free tier** - it is billed
+per email sent plus per MB transferred (Azure's published Communication
+Services pricing page). This was omitted from the original ADR text;
+`features/auth/mfa/send-email-otp.ts` now carries this as an explicit
+comment. At this project's expected MFA-OTP volume the cost is small,
+but it is a real, ongoing, metered line item against this project's
+Azure bill, not a zero-cost service - this should have been stated
+plainly the first time Azure Communication Services was proposed as
+the Resend replacement.
 
 ## Consequences
 - `db/schema.ts`: `mfaFrequencyEnum`, `userSecurity.requiredFactors`/

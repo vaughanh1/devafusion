@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 
+import { TotpEnrolment } from "@/components/account/totp-enrolment";
 import { FormError } from "@/components/auth/form-error";
 
 type FactorOption = "totp" | "email" | "none";
@@ -113,6 +114,8 @@ export function MfaSettingsDashboard() {
           </label>
         ))}
       </fieldset>
+
+      {selectedFactor === "totp" && <TotpEnrolment />}
 
       <fieldset className="flex flex-col gap-3">
         <legend className="text-sm font-medium text-foreground">

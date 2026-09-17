@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, password, captchaToken } = parsed.data;
+    const { email, password, captchaToken, formTimingToken } = parsed.data;
     const clientIp = resolveClientIp(request);
 
     const captchaVerified = await verifyTurnstileToken(
@@ -83,8 +83,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // auth.ts's hooks.before timing-token check runs for this direct
+    // auth.api call too (confirmed against better-auth's own
+    // dispatch.mjs - runBeforeHooks reads the raw input body before
+    // the endpoint's own zod schema validates/strips it, so an extra
+    // field survives to reach verifyFormTimingToken exactly as it
+    // does for the client-side authClient.signUp.email proxy path -
+    // see sign-up-form.tsx's identical comment). signInEmail's own
+    // typed body parameter has no formTimingToken field, so this is
+    // widened rather than narrowed; the field is still real and
+    // still required at runtime.
     const signInResponse = await auth.api.signInEmail({
-      body: { email, password },
+      body: { email, password, formTimingToken } as { email: string; password: string },
       asResponse: true,
     });
 

@@ -2,6 +2,8 @@ import "server-only";
 
 import { EmailClient } from "@azure/communication-email";
 
+import { formatOtpForAccessibility } from "./format-otp-for-accessibility";
+
 // UK GDPR data-sovereignty requirement (this project's own already-
 // settled position, docs/adr/0012's third-party-identity-SaaS
 // rejection) - Resend was evaluated and rejected: even its
@@ -30,6 +32,25 @@ import { EmailClient } from "@azure/communication-email";
 // dashboard toggle that could silently drift. disableUserEngagementTracking
 // below is set as belt-and-braces defense-in-depth on top of that
 // resource-level default, not a substitute for it.
+//
+// Sender is donotreply@devafusion.net (a verified custom domain, an
+// explicit product decision over the Azure-managed *.azurecomm.net
+// default - see infrastructure/app/modules/email/main.tf), giving
+// this email real brand trust and enabling DKIM/SPF/DMARC on this
+// project's own zone rather than Microsoft's shared domain. No
+// display name is set on senderAddress here - the installed
+// @azure/communication-email SDK's EmailMessage.senderAddress is a
+// plain string with no displayName field; a friendly "From" name
+// requires Azure's separate Sender Username feature, which the
+// azurerm Terraform provider has no resource for today (Portal/
+// CLI/PowerShell only) - not built in this slice, a real follow-up.
+//
+// Cost note (not free): Azure Communication Services Email has no
+// free tier - it is billed per email sent plus per MB transferred
+// (Azure's published Communication Services pricing page). At this
+// project's expected MFA-OTP volume this is a small, metered cost,
+// but it is a real, ongoing line item against this project's Azure
+// bill, not a zero-cost service.
 let emailClient: EmailClient | undefined;
 
 function getEmailClient(): EmailClient {
@@ -55,11 +76,17 @@ export async function sendEmailOtp(
     );
   }
 
+  // UK GDPR/accessibility requirement, not cosmetic: a bare 6-digit
+  // run is read by screen readers and spoken aloud as one large
+  // number, not six individually distinguishable digits - see
+  // format-otp-for-accessibility.ts's own comment.
+  const accessibleCode = formatOtpForAccessibility(code);
+
   const poller = await getEmailClient().beginSend({
     senderAddress,
     content: {
       subject: "Your sign-in verification code",
-      plainText: `Your verification code is ${code}. This code expires in 3 minutes. If you did not request this, you can safely ignore this email.`,
+      plainText: `Your verification code is: ${accessibleCode}\n\nThis code expires in 3 minutes. If you did not request this, you can safely ignore this email.`,
     },
     recipients: {
       to: [{ address: toEmail }],

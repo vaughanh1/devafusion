@@ -11,23 +11,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // vi.mock factories are hoisted above top-level variable declarations,
 // so the mock functions they reference must be created via vi.hoisted
 // rather than a plain const.
-const { pushMock, refreshMock, signInEmailMock, turnstileResetMock } = vi.hoisted(() => ({
+const { pushMock, refreshMock, fetchMock, turnstileResetMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   refreshMock: vi.fn(),
-  signInEmailMock: vi.fn(),
+  fetchMock: vi.fn(),
   turnstileResetMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
-}));
-
-vi.mock("@/features/auth/auth-client", () => ({
-  authClient: {
-    signIn: {
-      email: signInEmailMock,
-    },
-  },
 }));
 
 // ADR-0014: see sign-up-form.test.tsx's identical comment.
@@ -49,6 +41,14 @@ vi.mock("@/components/auth/turnstile-widget", () => ({
 
 import { LogInForm } from "@/app/log-in/log-in-form";
 
+function jsonResponse(status: number, body: unknown) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => body,
+  };
+}
+
 function fillAndSubmit() {
   fireEvent.change(screen.getByLabelText("Email"), {
     target: { value: "ada@example.com" },
@@ -64,12 +64,18 @@ describe("LogInForm", () => {
     cleanup();
     pushMock.mockReset();
     refreshMock.mockReset();
-    signInEmailMock.mockReset();
+    fetchMock.mockReset();
     turnstileResetMock.mockReset();
+    vi.unstubAllGlobals();
   });
 
-  it("redirects to the given path on a successful log-in", async () => {
-    signInEmailMock.mockResolvedValue({ data: {}, error: null });
+  function stubFetch() {
+    vi.stubGlobal("fetch", fetchMock);
+  }
+
+  it("redirects to the given path on a password-only login", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(jsonResponse(200, { mfaRequired: false }));
     render(<LogInForm redirectPath="/log" formTimingToken="test-token" />);
 
     fillAndSubmit();
@@ -78,36 +84,58 @@ describe("LogInForm", () => {
     expect(refreshMock).toHaveBeenCalled();
   });
 
-  it("passes the redirect path through as callbackURL", async () => {
-    signInEmailMock.mockResolvedValue({ data: {}, error: null });
+  it("posts email/password/captchaToken/formTimingToken to /api/auth/login-step1", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(jsonResponse(200, { mfaRequired: false }));
     render(<LogInForm redirectPath="/projects" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
-    await waitFor(() =>
-      expect(signInEmailMock).toHaveBeenCalledWith(
-        expect.objectContaining({ callbackURL: "/projects" }),
-      ),
-    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    const [url, options] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("/api/auth/login-step1");
+    expect(JSON.parse(options.body)).toEqual({
+      email: "ada@example.com",
+      password: "correct-horse-battery",
+      captchaToken: "test-captcha-token",
+      formTimingToken: "test-token",
+    });
   });
 
-  it("shows a single generic message on invalid credentials, not Better Auth's own message", async () => {
-    signInEmailMock.mockResolvedValue({
-      data: null,
-      error: { message: "No user found for this email." },
-    });
+  it("renders the MFA challenge form when mfaRequired is true", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        mfaRequired: true,
+        pendingToken: "pending-123",
+        nextFactorNeeded: "totp",
+      }),
+    );
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
+
+    fillAndSubmit();
+
+    expect(
+      await screen.findByLabelText(/enter the 6-digit code from your authenticator app/i),
+    ).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("shows a single generic message on invalid credentials", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(jsonResponse(401, { error: "Invalid email or password." }));
     render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Invalid email or password.");
-    expect(alert).not.toHaveTextContent("No user found");
     expect(pushMock).not.toHaveBeenCalled();
   });
 
   it("shows a generic error when the request throws", async () => {
-    signInEmailMock.mockRejectedValue(new Error("network down"));
+    stubFetch();
+    fetchMock.mockRejectedValue(new Error("network down"));
     render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
@@ -119,10 +147,8 @@ describe("LogInForm", () => {
 
   // ADR-0014: see sign-up-form.test.tsx's identical comment.
   it("resets the Turnstile widget when the server rejects the log-in", async () => {
-    signInEmailMock.mockResolvedValue({
-      data: null,
-      error: { message: "No user found for this email." },
-    });
+    stubFetch();
+    fetchMock.mockResolvedValue(jsonResponse(401, { error: "Invalid email or password." }));
     render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();
@@ -131,7 +157,8 @@ describe("LogInForm", () => {
   });
 
   it("resets the Turnstile widget when the request throws", async () => {
-    signInEmailMock.mockRejectedValue(new Error("network down"));
+    stubFetch();
+    fetchMock.mockRejectedValue(new Error("network down"));
     render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
 
     fillAndSubmit();

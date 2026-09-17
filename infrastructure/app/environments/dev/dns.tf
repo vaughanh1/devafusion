@@ -114,6 +114,92 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
   }
 }
 
+# ADR-0015 addendum: Azure Communication Services Email's custom-
+# domain verification for devafusion.net (donotreply@devafusion.net,
+# module.email) - each record's type/name/value comes straight from
+# Azure's own verification_records output, computed once
+# azurerm_email_communication_service_domain exists; nothing here is
+# guessed or hand-copied from the Portal. Domain ownership TXT and
+# SPF/DKIM/DKIM2 verify automatically once these are live in DNS
+# (Microsoft's own documented 15-30 minute propagation window, no
+# manual "click verify" step). This is entirely independent of
+# devafusion.com's separate Microsoft 365 DKIM/DMARC records above -
+# different domain, different mail system (M365 mailboxes vs. this
+# app's own transactional MFA sender).
+#
+# CAVEAT (must be verified before merge, not assumed): Azure's own
+# documentation examples for verification_records.*.name were not
+# conclusively confirmed as fully-qualified (e.g.
+# "selector1-azurecomm-prod-net._domainkey.devafusion.net.") vs.
+# already-relative-to-zone (e.g. "selector1-azurecomm-prod-net.
+# _domainkey") against a real, live Azure Communication Services
+# resource - no live subscription was available to check this
+# directly. The trimsuffix() calls below assume the fully-qualified
+# form (Azure's typical convention for this kind of computed DNS
+# value) and strip the zone suffix accordingly. Run `terraform plan`
+# against a real Azure subscription with modules/email actually
+# applied, inspect the literal .name values azurerm returns, and fix
+# this trimsuffix logic if the assumption is wrong, before this is
+# ever applied to a real environment.
+resource "azurerm_dns_txt_record" "devafusion_net_acs_domain_verification" {
+  name                = trimsuffix(module.email.verification_records[0].domain[0].name, ".${local.primary_domain}.")
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].domain[0].ttl
+
+  record {
+    value = module.email.verification_records[0].domain[0].value
+  }
+}
+
+resource "azurerm_dns_txt_record" "devafusion_net_acs_spf" {
+  name                = trimsuffix(module.email.verification_records[0].spf[0].name, ".${local.primary_domain}.")
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].spf[0].ttl
+
+  record {
+    value = module.email.verification_records[0].spf[0].value
+  }
+}
+
+resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim" {
+  name                = trimsuffix(module.email.verification_records[0].dkim[0].name, ".${local.primary_domain}.")
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].dkim[0].ttl
+
+  record = module.email.verification_records[0].dkim[0].value
+}
+
+resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim2" {
+  name                = trimsuffix(module.email.verification_records[0].dkim2[0].name, ".${local.primary_domain}.")
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].dkim2[0].ttl
+
+  record = module.email.verification_records[0].dkim2[0].value
+}
+
+# DMARC is deliberately NOT sourced from verification_records.dmarc -
+# Azure's own default DMARC record uses p=none (monitor-only), and
+# this zone already has an established DMARC policy pattern for
+# devafusion.com (p=none, see that record's own comment) that this
+# mirrors for consistency; the actual record value is a literal
+# matching that same pattern, not Azure-computed, since ACS's
+# verification does not require a specific DMARC policy stringency,
+# only that a record exists at _dmarc.
+resource "azurerm_dns_txt_record" "devafusion_net_dmarc" {
+  name                = "_dmarc"
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = 3600
+
+  record {
+    value = "v=DMARC1; p=none; rua=mailto:dmarc@devafusion.net"
+  }
+}
+
 resource "azurerm_dns_txt_record" "devafusion_net_atproto" {
   name                = "_atproto"
   zone_name           = azurerm_dns_zone.devafusion_net.name

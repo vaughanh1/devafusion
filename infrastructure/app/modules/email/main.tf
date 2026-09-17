@@ -17,21 +17,22 @@ resource "azurerm_email_communication_service" "this" {
   tags = var.tags
 }
 
-# Azure-managed domain (*.azurecomm.net) - no external DNS
-# verification step required, unlike a custom domain, which would
-# need SPF/DKIM/DMARC TXT records on a real devafusion.* zone. Chosen
-# deliberately for this slice: an MFA OTP email's deliverability bar
-# (reaching the user's own inbox, checked once per login) is lower
-# than a marketing/transactional-brand email's, and avoiding a custom
-# domain here means zero manual DNS steps - the entire chain from
-# here down is Terraform-computed, with no manual Key Vault step at
-# all (contrast with every credential-shaped secret elsewhere in this
-# project, per ADR-0004).
+# ADR-0015 addendum: CustomerManaged, not AzureManagedDomain - the
+# product decision is that MFA emails must come from
+# noreply@devafusion.net, a real, brand-trusted sender, not a
+# *.azurecomm.net address. This requires DNS verification (the
+# caller wires verification_records below into azurerm_dns_* records
+# on the real devafusion.net zone, the same zone already carrying
+# devafusion.com's separate Microsoft 365 DKIM/DMARC records for
+# human mailboxes) - a real DNS propagation delay (15-30 minutes,
+# Microsoft's own documented window) applies before Azure finishes
+# verifying, but no manual "click verify" step: Azure polls DNS
+# automatically once the records are live.
 resource "azurerm_email_communication_service_domain" "this" {
-  name             = "AzureManagedDomain"
+  name             = var.custom_domain_name
   email_service_id = azurerm_email_communication_service.this.id
 
-  domain_management = "AzureManaged"
+  domain_management = "CustomerManaged"
 
   # UK GDPR Article 5(1)(c) / PECR: an MFA OTP email has no legitimate
   # marketing/analytics purpose - explicit false here, matching this

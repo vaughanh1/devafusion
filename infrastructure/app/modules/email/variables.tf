@@ -27,3 +27,14 @@ variable "data_location" {
 variable "tags" {
   type = map(string)
 }
+
+# ADR-0015 addendum: custom verified domain (not Azure-managed) - a
+# real UK SME/consumer-facing mailbox uses noreply@devafusion.net,
+# not a *.azurecomm.net sender, per an explicit product decision
+# (see this ADR's addendum) that deliverability/brand trust for an
+# MFA OTP email outweighs the zero-DNS-step convenience of the
+# Azure-managed domain this module previously used.
+variable "custom_domain_name" {
+  description = "The verified custom domain name (e.g. devafusion.net) - domain_management = \"CustomerManaged\" is used instead of AzureManagedDomain."
+  type        = string
+}

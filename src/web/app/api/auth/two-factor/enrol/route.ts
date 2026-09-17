@@ -9,6 +9,7 @@ import {
 } from "@/features/auth/mfa/backup-code-hash";
 import { DrizzleBackupCodesRepository } from "@/features/auth/mfa/drizzle-backup-codes-repository";
 import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
+import { renderTotpQrCodeDataUri } from "@/features/auth/mfa/totp-qr-code";
 
 const userSecurityRepository = new DrizzleUserSecurityRepository();
 const backupCodesRepository = new DrizzleBackupCodesRepository();
@@ -49,7 +50,18 @@ export async function POST() {
       label: session.user.email,
       secret,
     });
-    const qrCodeUri = totp.toString();
+    const otpauthUri = totp.toString();
+
+    // Accessibility/deliverability requirement, not cosmetic: a raw
+    // otpauth:// URI string cannot be scanned by anything, and most
+    // email clients that strip inline images would also strip a
+    // <img src="otpauth://..."> tag even if one were attempted -
+    // this is a real PNG, safe wherever a normal <img> is safe.
+    // secret.base32 is also returned as plain text alongside it so a
+    // user relying on a screen reader, a text-only client, or
+    // someone who simply cannot scan a QR code can still type the
+    // secret manually into their authenticator app.
+    const qrCodeDataUri = await renderTotpQrCodeDataUri(otpauthUri);
 
     // encryptedSecretText (db/schema.ts) transparently encrypts this
     // plaintext base32 secret at the column boundary - the
@@ -86,7 +98,11 @@ export async function POST() {
       backupCodes.map(hashBackupCode),
     );
 
-    return NextResponse.json({ qrCodeUri, backupCodes });
+    return NextResponse.json({
+      qrCodeDataUri,
+      manualEntrySecret: secret.base32,
+      backupCodes,
+    });
   } catch (error) {
     console.error("TOTP enrolment failed", error);
     return NextResponse.json(
