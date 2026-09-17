@@ -319,6 +319,57 @@ factor forever. Fixed by resolving the actually-satisfied factor as
 was used to satisfy it, and completing/filtering against that
 resolved value instead of the raw request field.
 
+## Fourth addendum: real e2e run executed, nested-form bug fixed, DNS name-format assumption hardened away
+
+### `tests-e2e/mfa-flow.spec.ts` was run for real, and it found a genuine production bug
+This spec had been written and gated behind `TEST_MFA_FLOWS=true` but never
+actually executed. Ran it against a real local `postgres:16` Docker
+container with a real migrated schema and a real `next build` standalone
+server. First run failed on an unrelated local fixture mistake (a 34-byte
+base64 `MFA_ENCRYPTION_KEY` test value, not the committed 32-byte
+requirement enforced by `encrypted-column-cipher.ts` - fixed by generating
+a correctly-sized throwaway key for the local run only; nothing shipped
+changed here).
+
+The second run surfaced a real bug: `TotpEnrolment`'s confirmation step
+rendered its own `<form>`, but this component is always mounted inside
+`MfaSettingsDashboard`'s own outer `<form>` on the account page. HTML
+forbids nested forms - a real browser click on "Confirm and enable"
+actually submitted the *outer* settings form (a full page reload), so
+`/api/auth/two-factor/confirm` was never called and enrolment could never
+actually complete through the UI. The existing Vitest/jsdom unit test for
+this component did not catch it, because `fireEvent.click` on a submit
+button inside jsdom does not reproduce a real browser's nested-form
+submission semantics - this is exactly the class of bug e2e coverage
+exists to catch and unit tests structurally cannot. Fixed by rendering a
+plain `<div>` instead of a `<form>`, with the confirm button changed from
+`type="submit"` to `type="button"` + an explicit `onClick` handler. Added
+a regression unit test asserting no `<form>` element is ever rendered by
+this component, alongside the real e2e coverage.
+
+After the fix, the full sign-up → enrol → confirm → log-out → log-in →
+sequential-matrix challenge → authenticated-session flow passed against a
+real database and a real browser (Chromium, via Playwright).
+
+### DNS record-name-format assumption resolved, not merely flagged
+The third addendum left an open caveat: whether
+`azurerm_email_communication_service_domain`'s
+`verification_records[*].name` returns a fully-qualified or zone-relative
+DNS name could not be confirmed without a live Azure subscription.
+Resolved without needing that live check: Terraform's `trimsuffix()` is
+documented to be a no-op - it returns its input completely unchanged
+whenever the given suffix is not present at the end of the string. This
+means chaining `trimsuffix()` against every plausible fully-qualified
+suffix form (with a trailing dot, without a trailing dot, and the bare
+domain) is safe regardless of which form Azure actually returns: a
+name that is already zone-relative simply passes through all three
+calls unchanged, since none of the suffixes will match it. `dns.tf`'s
+four ACS verification records (`domain`, `spf`, `dkim`, `dkim2`) were
+updated accordingly. `terraform fmt -check` and `terraform validate` both
+still pass. This removes the "must be verified before merge" caveat
+entirely rather than leaving it for a future `terraform plan` to
+discover.
+
 ## Second addendum: sender display name, comma-vs-space correction, i18n-ready copy, M365 clarification
 
 ### Sender display name was wrongly claimed unsupported - corrected

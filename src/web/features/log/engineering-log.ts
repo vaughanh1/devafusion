@@ -43,6 +43,7 @@ import { entry as selfHostedMfaMatrix } from "./entries/self-hosted-mfa-matrix";
 import { entry as mfaMatrixFrontendAndAccessibility } from "./entries/mfa-matrix-frontend-and-accessibility";
 import { entry as mfaEmailSenderAndCopyFixes } from "./entries/mfa-email-sender-and-copy-fixes";
 import { entry as mfaRouteAndCryptoTestCoverage } from "./entries/mfa-route-and-crypto-test-coverage";
+import { entry as mfaE2eVerificationAndDnsHardening } from "./entries/mfa-e2e-verification-and-dns-hardening";
 
 export type { LogEntry } from "./types";
 
@@ -96,6 +97,7 @@ const allEntries = [
   mfaMatrixFrontendAndAccessibility,
   mfaEmailSenderAndCopyFixes,
   mfaRouteAndCryptoTestCoverage,
+  mfaE2eVerificationAndDnsHardening,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

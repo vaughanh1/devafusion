@@ -127,22 +127,25 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
 # different domain, different mail system (M365 mailboxes vs. this
 # app's own transactional MFA sender).
 #
-# CAVEAT (must be verified before merge, not assumed): Azure's own
-# documentation examples for verification_records.*.name were not
-# conclusively confirmed as fully-qualified (e.g.
-# "selector1-azurecomm-prod-net._domainkey.devafusion.net.") vs.
-# already-relative-to-zone (e.g. "selector1-azurecomm-prod-net.
-# _domainkey") against a real, live Azure Communication Services
-# resource - no live subscription was available to check this
-# directly. The trimsuffix() calls below assume the fully-qualified
-# form (Azure's typical convention for this kind of computed DNS
-# value) and strip the zone suffix accordingly. Run `terraform plan`
-# against a real Azure subscription with modules/email actually
-# applied, inspect the literal .name values azurerm returns, and fix
-# this trimsuffix logic if the assumption is wrong, before this is
-# ever applied to a real environment.
+# azurerm's own verification_records[*].name may come back either
+# fully-qualified (with or without a trailing dot) or already
+# relative to the zone - Terraform's trimsuffix() is documented to be
+# a no-op (returns the input unchanged) whenever the given suffix
+# isn't present at the end of the string, so trimming all three
+# possible fully-qualified suffix forms in sequence below is safe
+# regardless of which form Azure actually returns: an already-
+# relative name simply passes through every trimsuffix() unchanged,
+# since none of the three suffixes will match it.
+locals {
+  acs_domain_suffixes = [
+    ".${local.primary_domain}.", # fully-qualified with trailing dot
+    ".${local.primary_domain}",  # fully-qualified without trailing dot
+    local.primary_domain,        # bare domain with no leading dot (unlikely, covered for safety)
+  ]
+}
+
 resource "azurerm_dns_txt_record" "devafusion_net_acs_domain_verification" {
-  name                = trimsuffix(module.email.verification_records[0].domain[0].name, ".${local.primary_domain}.")
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].domain[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
   zone_name           = azurerm_dns_zone.devafusion_net.name
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = module.email.verification_records[0].domain[0].ttl
@@ -153,7 +156,7 @@ resource "azurerm_dns_txt_record" "devafusion_net_acs_domain_verification" {
 }
 
 resource "azurerm_dns_txt_record" "devafusion_net_acs_spf" {
-  name                = trimsuffix(module.email.verification_records[0].spf[0].name, ".${local.primary_domain}.")
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].spf[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
   zone_name           = azurerm_dns_zone.devafusion_net.name
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = module.email.verification_records[0].spf[0].ttl
@@ -164,7 +167,7 @@ resource "azurerm_dns_txt_record" "devafusion_net_acs_spf" {
 }
 
 resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim" {
-  name                = trimsuffix(module.email.verification_records[0].dkim[0].name, ".${local.primary_domain}.")
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].dkim[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
   zone_name           = azurerm_dns_zone.devafusion_net.name
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = module.email.verification_records[0].dkim[0].ttl
@@ -173,7 +176,7 @@ resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim" {
 }
 
 resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim2" {
-  name                = trimsuffix(module.email.verification_records[0].dkim2[0].name, ".${local.primary_domain}.")
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].dkim2[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
   zone_name           = azurerm_dns_zone.devafusion_net.name
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = module.email.verification_records[0].dkim2[0].ttl

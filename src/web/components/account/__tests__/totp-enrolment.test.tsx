@@ -78,6 +78,34 @@ describe("TotpEnrolment", () => {
     );
   });
 
+  // Regression test for a real e2e-only failure (tests-e2e/mfa-flow.spec.ts):
+  // this component is always mounted inside MfaSettingsDashboard's own
+  // outer <form>, so rendering a second <form> here is invalid HTML - a
+  // real browser click on the confirm button would submit the *outer*
+  // form (a full page reload) instead of ever calling
+  // /api/auth/two-factor/confirm. jsdom's fireEvent.click does not
+  // reproduce that browser-level nested-form behaviour, which is why this
+  // check has to assert structurally rather than via a click outcome.
+  it("never renders a nested <form> around the confirmation step", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(
+      jsonResponse(200, {
+        qrCodeDataUri: "data:image/png;base64,abc123",
+        manualEntrySecret: "JBSWY3DPEHPK3PXP",
+        backupCodes: ["AAAA1111BBBB"],
+      }),
+    );
+    render(<TotpEnrolment />);
+
+    fireEvent.click(screen.getByRole("button", { name: /set up authenticator app/i }));
+    await screen.findByRole("img");
+
+    expect(document.querySelector("form")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /confirm and enable/i }),
+    ).toHaveAttribute("type", "button");
+  });
+
   it("shows an error when starting enrolment fails", async () => {
     stubFetch();
     fetchMock.mockResolvedValue(

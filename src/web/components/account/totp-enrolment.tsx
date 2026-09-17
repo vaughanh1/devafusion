@@ -59,8 +59,7 @@ export function TotpEnrolment() {
     }
   }
 
-  async function handleConfirm(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function handleConfirm() {
     setError(null);
     setIsLoading(true);
 
@@ -155,7 +154,14 @@ export function TotpEnrolment() {
         </ul>
       </div>
 
-      <form onSubmit={handleConfirm} className="flex flex-col gap-3">
+      {/* A plain div, not a nested <form> - this component is always
+          mounted inside MfaSettingsDashboard's own outer <form>, and
+          HTML forbids nested forms. A nested <form> here would submit
+          the *outer* form on click (a full page reload, silently
+          discarding this component's own state) instead of ever
+          calling handleConfirm - exactly the failure this component's
+          e2e coverage (tests-e2e/mfa-flow.spec.ts) caught. */}
+      <div className="flex flex-col gap-3">
         <label htmlFor={codeId} className="text-sm font-medium text-foreground">
           Enter the 6-digit code from your authenticator app to finish
         </label>
@@ -171,13 +177,14 @@ export function TotpEnrolment() {
           className="min-h-11 border border-surface-border bg-background px-3 text-base tracking-widest text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <button
-          type="submit"
+          type="button"
+          onClick={handleConfirm}
           disabled={isLoading || confirmCode.length === 0}
           className="min-h-11 cursor-pointer self-start border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? "Confirming…" : "Confirm and enable"}
         </button>
-      </form>
+      </div>
     </div>
   );
 }
