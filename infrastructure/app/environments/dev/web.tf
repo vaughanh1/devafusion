@@ -32,6 +32,9 @@ module "webapp" {
     # same pattern as every secret above.
     TURNSTILE_SECRET_KEY     = data.azurerm_key_vault_secret.turnstile_secret_key.value
     FORM_TIMING_TOKEN_SECRET = data.azurerm_key_vault_secret.form_timing_token_secret.value
+    # ADR-0015: MFA email-OTP dispatch (features/auth/mfa/send-email-otp.ts).
+    RESEND_API_KEY          = data.azurerm_key_vault_secret.resend_api_key.value
+    RESEND_MFA_FROM_ADDRESS = data.azurerm_key_vault_secret.resend_mfa_from_address.value
     # Turnstile's sitekey is deliberately public (NEXT_PUBLIC_* is
     # inlined into the client bundle at build time) - it identifies
     # the widget to Cloudflare, not a credential; only secretKey above

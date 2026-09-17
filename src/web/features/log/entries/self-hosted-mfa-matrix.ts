@@ -25,6 +25,7 @@ export const entry: LogEntry = {
     "Added lru-cache and resend as new dependencies (src/web/package.json) - npm audit confirmed zero new vulnerabilities beyond the already-accepted, pre-existing drizzle-kit/esbuild/lighthouse dev-tooling advisories.",
     "Removed the now-superseded features/auth/mfa/two-factor-secret-cipher.ts, its test suite, and verify-totp.zod.ts.",
     "Wrote docs/adr/0015-self-hosted-mfa-matrix.md documenting every correction to the initial design and every consequence/follow-up.",
+    "Wired RESEND_API_KEY/RESEND_MFA_FROM_ADDRESS into infrastructure/app/environments/dev/keyvault.tf (new resend_api_key/resend_mfa_from_address data sources) and web.tf's app_settings, following ADR-0004's sanctioned-manual-step pattern exactly (create the value in Key Vault first, Terraform only ever reads it) - the two Key Vault secret values themselves (resend-api-key-devafusion, resend-mfa-from-address-devafusion) are the one manual step still required before CD can apply this.",
   ],
   validation: [
     "npm run typecheck and npm run lint (eslint --max-warnings 0) both passed clean.",
@@ -32,6 +33,7 @@ export const entry: LogEntry = {
     "npm run build succeeded - all five new/changed API routes (login-step1, two-factor/enrol, two-factor/confirm, two-factor/verify, user/security/settings) correctly reported as Dynamic.",
     "drizzle-kit generate/migrate applied cleanly against a real, freshly started postgres:16 Docker container; every new table's columns, defaults, and ON DELETE CASCADE foreign keys verified directly via psql, not assumed from the migration file alone.",
     "npm audit: 0 new vulnerabilities beyond the already-documented, accepted drizzle-kit/esbuild/lighthouse dev-tooling advisories.",
+    "terraform fmt -check and terraform validate both passed for infrastructure/app.",
   ],
   visibility: "public",
 };

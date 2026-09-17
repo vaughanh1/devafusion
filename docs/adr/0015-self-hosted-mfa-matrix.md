@@ -118,11 +118,22 @@ compared, only decrypted and fed into `otpauth`.
   theme and all three named accessibility profiles, each independently
   WCAG-contrast-checked against the real relative-luminance formula -
   mirrors `--danger`'s existing pattern exactly.
-- New Key Vault secrets required before the email-OTP factor can run
-  against a real environment: `RESEND_API_KEY`,
-  `RESEND_MFA_FROM_ADDRESS` - not yet wired into Terraform
-  (`infrastructure/app/environments/dev/keyvault.tf`/`web.tf`); this
-  is a required, tracked follow-up, not built as part of this slice.
+- New Key Vault secrets for the email-OTP factor, wired into
+  Terraform per ADR-0004's sanctioned-manual-step pattern (a human
+  creates the value in Key Vault first, Terraform only ever reads it
+  via `data "azurerm_key_vault_secret"`):
+  `resend-api-key-devafusion` (a Resend API key, generated in the
+  Resend dashboard for a domain with `open_tracking`/`click_tracking`
+  left disabled - see this ADR's own Resend rationale above) and
+  `resend-mfa-from-address-devafusion` (the verified From address on
+  that domain, e.g. `"Devafusion <mfa@devafusion.com>"` - not itself
+  sensitive but kept alongside the API key rather than a plain
+  `.tfvars` literal, matching `turnstile_site_key`'s existing
+  precedent). Both are read into the web app's `RESEND_API_KEY`/
+  `RESEND_MFA_FROM_ADDRESS` app_settings
+  (`infrastructure/app/environments/dev/web.tf`).
+  `terraform fmt -check` and `terraform validate` both passed for
+  `infrastructure/app`.
 - **Passkeys/WebAuthn**: `required_factors: text[]` already
   accommodates a future `'webauthn'` string with zero schema
   refactoring - adding it is a new factor-type branch in
