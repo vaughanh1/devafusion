@@ -474,6 +474,34 @@ stages:
               # set in its own environment too.
               FORM_TIMING_TOKEN_SECRET: "lighthouse-ci-fixture-key-not-a-real-secret"
 
+          # lhci's own filenames (lhr-<timestamp>.html, one per run - 9
+          # total for 3 pages x 3 runs) don't say which page they're for.
+          # Copies only the representative (median) run per page - the
+          # same run categories:* assertions above actually gated on -
+          # into friendly, page-identifiable filenames so the Report tabs
+          # below are readable.
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              node ../../scripts/ci/lighthouse-rename-reports.mjs \
+                --manifest .lighthouseci/manifest.json \
+                --out-dir .lighthouseci/renamed
+            displayName: Rename Lighthouse reports for readable tabs
+            condition: always()
+
+          # blakyaks.azure-pipeline-html-reports ("Html Reports" extension,
+          # installed org-wide) - renders each self-contained lhci HTML
+          # report as its own tab under this run's Reports section, named
+          # from its filename (useFilenameTabs defaults to true for a
+          # directory reportDir).
+          - task: PublishHtmlReport@1
+            displayName: Publish Lighthouse HTML reports
+            condition: always()
+            inputs:
+              reportDir: "$(webWorkingDirectory)/.lighthouseci/renamed"
+
           - task: PublishPipelineArtifact@1
             displayName: Publish Lighthouse reports
             condition: always()
