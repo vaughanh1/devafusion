@@ -41,6 +41,7 @@ import { entry as lighthouseHtmlReportTabs } from "./entries/lighthouse-html-rep
 import { entry as lighthouseCiFindingsTriage } from "./entries/lighthouse-ci-findings-triage";
 import { entry as selfHostedMfaMatrix } from "./entries/self-hosted-mfa-matrix";
 import { entry as mfaMatrixFrontendAndAccessibility } from "./entries/mfa-matrix-frontend-and-accessibility";
+import { entry as mfaEmailSenderAndCopyFixes } from "./entries/mfa-email-sender-and-copy-fixes";
 
 export type { LogEntry } from "./types";
 
@@ -92,6 +93,7 @@ const allEntries = [
   lighthouseCiFindingsTriage,
   selfHostedMfaMatrix,
   mfaMatrixFrontendAndAccessibility,
+  mfaEmailSenderAndCopyFixes,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

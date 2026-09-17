@@ -163,11 +163,11 @@ exists), matching the same monitor-only stance already used for
 `devafusion.com`. Verification is automatic once the DNS records are
 live (Microsoft's documented 15-30 minute propagation window) - no
 manual "click verify" step. The sender's local-part stays `donotreply`
-(not `noreply`) - a custom Sender Username for a different local-part
-requires a separate Azure resource type the `azurerm` Terraform
-provider does not support (Portal/CLI/PowerShell only), and
-`donotreply@devafusion.net` was confirmed as acceptable rather than
-introducing an unsupported-in-Terraform manual step.
+(not `noreply`) - confirmed acceptable rather than provisioning a
+second sender address to verify. A friendly display name is added on
+top of this address via `azurerm_email_communication_service_domain_sender_username`
+- see the Second Addendum below for the correction of an earlier,
+wrong claim that this resource did not exist.
 
 **Open item, not yet verified**: `dns.tf`'s `trimsuffix()` normalisation
 of `verification_records[].name` assumes Azure returns a fully-
@@ -268,6 +268,61 @@ but it is a real, ongoing, metered line item against this project's
 Azure bill, not a zero-cost service - this should have been stated
 plainly the first time Azure Communication Services was proposed as
 the Resend replacement.
+
+## Second addendum: sender display name, comma-vs-space correction, i18n-ready copy, M365 clarification
+
+### Sender display name was wrongly claimed unsupported - corrected
+An earlier version of this ADR/`send-email-otp.ts`'s own comment
+stated `azurerm` had no Terraform resource for a custom sender display
+name. That claim was wrong and was made without actually checking the
+provider's registry docs - corrected after verifying directly:
+`azurerm_email_communication_service_domain_sender_username` exists,
+takes `name` (the MailFrom local-part) and `display_name`, and is now
+provisioned in `infrastructure/app/modules/email/main.tf` as
+`donotreply` with `display_name = "Devafusion"`. The display name is
+a resource-level setting Azure attaches automatically based on which
+verified sender address is used - `send-email-otp.ts`'s SDK call still
+only ever passes the plain address string; there is no per-send
+display-name parameter in the installed `@azure/communication-email`
+SDK.
+
+### Comma-separated OTP digits would not have worked
+Clarified in `format-otp-for-accessibility.ts`'s own comment: a
+comma-separated code ("1, 2, 3, 4, 5, 6") is not equivalent to a
+space-separated one for accessibility purposes. Screen readers and
+text-to-speech/dictation engines treat a comma as a clause/pause
+marker, not a hard digit boundary, so "1, 2, 3" can still be read as
+"one two three" with only a brief pause rather than three fully
+distinct digits. The implementation already used spaces, not commas -
+this addendum only strengthens the comment and adds an explicit test
+asserting the output never contains a comma, so a future edit cannot
+silently regress this.
+
+### Email copy is no longer inlined - a lightweight seam for future i18n
+This project has no i18n library or locale routing today (confirmed:
+no `next-intl` or equivalent is installed) - adopting one now, before
+it's actually needed, would be exactly the kind of speculative
+dependency root `AGENTS.md`'s "No Vibe-Coding" rule warns against.
+Instead, `features/auth/mfa/email-otp-content.ts` centralises the
+subject/body strings as plain functions (`emailOtpSubject()`,
+`emailOtpBody(accessibleCode)`) rather than inlining them into
+`send-email-otp.ts`'s SDK call - a real i18n library, when actually
+adopted, only has to change this one file (parameterising both
+functions by a locale argument, or replacing them with the library's
+own `t()` calls), not hunt through the SDK call site for hardcoded
+strings.
+
+### Microsoft 365 mailbox on devafusion.com - no conflict
+Confirmed directly against `dns.tf`: the Microsoft 365 Business
+mailbox's MX/autodiscover/DKIM-selector/DMARC records are all scoped
+to `azurerm_dns_zone.devafusion_com`, a completely separate DNS zone
+resource from this module's `devafusion.net` (`azurerm_dns_zone.devafusion_net`).
+SPF, DKIM, and DMARC are all scoped per-domain, not per-tenant or
+per-subscription - `devafusion.net`'s own SPF/DKIM/DMARC records
+neither read nor overwrite anything belonging to the `devafusion.com`
+M365 mailbox. `environments/dev/email.tf` now carries this as an
+explicit comment so the question does not need re-asking in a future
+review.
 
 ## Consequences
 - `db/schema.ts`: `mfaFrequencyEnum`, `userSecurity.requiredFactors`/

@@ -62,3 +62,20 @@ resource "azurerm_communication_service_email_domain_association" "this" {
   communication_service_id = azurerm_communication_service.this.id
   email_service_domain_id  = azurerm_email_communication_service_domain.this.id
 }
+
+# Gives the sender a real, friendly "From" display name ("Devafusion")
+# rather than a bare address - confirmed this resource genuinely
+# exists in the azurerm provider (an earlier claim that it didn't was
+# wrong and is corrected here, verified directly against the
+# provider's own registry docs). name is the MailFrom local-part
+# ("donotreply", matching the domain's own default local-part rather
+# than introducing a second address to verify) - display_name is set
+# once here, at the resource level, not per-send in the SDK; the SDK
+# call in send-email-otp.ts still only passes the plain address
+# string, and Azure attaches this display name automatically based on
+# which verified sender address is used.
+resource "azurerm_email_communication_service_domain_sender_username" "donotreply" {
+  name                    = "donotreply"
+  email_service_domain_id = azurerm_email_communication_service_domain.this.id
+  display_name            = "Devafusion"
+}

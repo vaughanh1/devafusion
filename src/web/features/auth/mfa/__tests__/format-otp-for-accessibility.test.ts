@@ -20,4 +20,8 @@ describe("formatOtpForAccessibility", () => {
   it("handles a code with repeated digits correctly", () => {
     expect(formatOtpForAccessibility("111111")).toBe("1 1 1 1 1 1");
   });
+
+  it("never uses commas as the separator (a comma is a pause marker to screen readers/TTS, not a hard digit boundary)", () => {
+    expect(formatOtpForAccessibility("123456")).not.toContain(",");
+  });
 });

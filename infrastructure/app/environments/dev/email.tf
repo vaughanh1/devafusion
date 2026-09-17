@@ -4,6 +4,18 @@
 # guarantee for email content at rest - see infrastructure/app/
 # modules/email/main.tf's own comment for the full rationale and the
 # Resend alternative this replaced.
+#
+# Zero conflict with the Microsoft 365 Business mailbox: that mailbox
+# is provisioned on devafusion.com (dns.tf's MX/autodiscover/DKIM
+# selector1/selector2/DMARC records, all scoped to
+# azurerm_dns_zone.devafusion_com), a completely separate DNS zone
+# from this module's custom_domain_name (devafusion.net,
+# azurerm_dns_zone.devafusion_net). SPF, DKIM, and DMARC are all
+# scoped per-domain, not per-tenant/per-subscription, so
+# devafusion.net's own SPF/DKIM/DMARC records (wired in dns.tf below)
+# neither read nor overwrite anything belonging to the
+# devafusion.com M365 mailbox - the two domains' mail authentication
+# records are entirely independent.
 module "email" {
   source = "../../modules/email"
 

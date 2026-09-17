@@ -2,6 +2,7 @@ import "server-only";
 
 import { EmailClient } from "@azure/communication-email";
 
+import { emailOtpBody, emailOtpSubject } from "./email-otp-content";
 import { formatOtpForAccessibility } from "./format-otp-for-accessibility";
 
 // UK GDPR data-sovereignty requirement (this project's own already-
@@ -37,13 +38,14 @@ import { formatOtpForAccessibility } from "./format-otp-for-accessibility";
 // explicit product decision over the Azure-managed *.azurecomm.net
 // default - see infrastructure/app/modules/email/main.tf), giving
 // this email real brand trust and enabling DKIM/SPF/DMARC on this
-// project's own zone rather than Microsoft's shared domain. No
-// display name is set on senderAddress here - the installed
-// @azure/communication-email SDK's EmailMessage.senderAddress is a
-// plain string with no displayName field; a friendly "From" name
-// requires Azure's separate Sender Username feature, which the
-// azurerm Terraform provider has no resource for today (Portal/
-// CLI/PowerShell only) - not built in this slice, a real follow-up.
+// project's own zone rather than Microsoft's shared domain. The
+// friendly "Devafusion" From display name is configured once on the
+// azurerm_email_communication_service_domain_sender_username
+// Terraform resource (infrastructure/app/modules/email/main.tf), not
+// passed here - the installed @azure/communication-email SDK's
+// EmailMessage.senderAddress is a plain string with no displayName
+// field, and Azure attaches the configured display name
+// automatically based on which verified sender address is used.
 //
 // Cost note (not free): Azure Communication Services Email has no
 // free tier - it is billed per email sent plus per MB transferred
@@ -85,8 +87,8 @@ export async function sendEmailOtp(
   const poller = await getEmailClient().beginSend({
     senderAddress,
     content: {
-      subject: "Your sign-in verification code",
-      plainText: `Your verification code is: ${accessibleCode}\n\nThis code expires in 3 minutes. If you did not request this, you can safely ignore this email.`,
+      subject: emailOtpSubject(),
+      plainText: emailOtpBody(accessibleCode),
     },
     recipients: {
       to: [{ address: toEmail }],
