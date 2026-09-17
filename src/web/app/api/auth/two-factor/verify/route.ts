@@ -169,9 +169,20 @@ export async function POST(request: Request) {
       await backupCodesRepository.markUsed(backupCodeRecordId);
     }
 
-    const completedFactors = [...state.completedFactors, factorType];
+    // A backup code substitutes for whatever factor was actually
+    // pending (state.remainingFactors[0]) - it is never itself a
+    // member of remainingFactors, since remainingFactors only ever
+    // holds real factor names ("totp"/"email"). Filtering by the
+    // literal submitted factorType would never remove anything for
+    // a backup_code submission (the string "backup_code" never
+    // appears in remainingFactors), silently re-chaining to the same
+    // factor forever - the factor actually being satisfied is always
+    // remainingFactors[0], regardless of which factorType value was
+    // used to satisfy it.
+    const satisfiedFactor = state.remainingFactors[0]!;
+    const completedFactors = [...state.completedFactors, satisfiedFactor];
     const remainingFactors = state.remainingFactors.filter(
-      (factor) => factor !== factorType,
+      (factor) => factor !== satisfiedFactor,
     );
 
     if (remainingFactors.length > 0) {

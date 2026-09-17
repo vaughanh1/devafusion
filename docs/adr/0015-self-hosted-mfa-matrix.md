@@ -269,6 +269,56 @@ Azure bill, not a zero-cost service - this should have been stated
 plainly the first time Azure Communication Services was proposed as
 the Resend replacement.
 
+## Third addendum: unit test coverage for every backend route and crypto/cache module
+
+None of the five new backend routes (`login-step1`, `two-factor/verify`,
+`two-factor/enrol`, `two-factor/confirm`, `user/security/settings`) or
+the security-critical library modules
+(`encrypted-column-cipher.ts`, `backup-code-hash.ts`,
+`mfa-session-cache.ts`, `mfa-export-handler.ts`, and the three new
+Drizzle repositories) had any dedicated test coverage before this
+addendum - a real gap found only because it was asked about directly,
+not caught proactively. Closed by adding:
+- Direct unit tests for `encrypted-column-cipher.ts` (round-trip,
+  random-IV non-determinism, tamper detection, missing/malformed key
+  handling - the exact suite the now-removed
+  `two-factor-secret-cipher.test.ts` had for the module this
+  supersedes, never replaced until now) and `backup-code-hash.ts`
+  (hash/verify round-trip, random salt, alphabet exclusion of
+  0/O/1/I).
+- A direct unit test for `mfa-session-cache.ts`'s set/get/delete
+  behaviour (the module-level `LRUCache` singleton, exercised with
+  per-test unique tokens rather than constructor injection).
+- Real-PGlite tests (mirroring `features/auth/__tests__/rate-limit.test.ts`'s
+  established "prove it against something real" pattern) for
+  `DrizzleBackupCodesRepository`, `DrizzleTrustedDevicesRepository`,
+  and `DrizzleUserSecurityRepository` - the latter proves the
+  `encryptedSecretText` customType's transparent encrypt/decrypt
+  round trip through a real Drizzle query, not a mocked one.
+- A mocked-dependency test for `mfa-export-handler.ts` asserting the
+  raw secret and the trusted-device token are never present in the
+  export payload, even when the underlying repositories return them.
+- Route-level tests (mocking dependencies exactly as
+  `app/api/account/export/__tests__/route.test.ts` already
+  established) for all five new routes, covering rate limiting,
+  session-cookie withholding/release, the trusted-device bypass,
+  backup-code burn-on-use, password re-confirmation, and the
+  TOTP-deactivation zero-out path.
+
+**A real, previously-shipped bug was found and fixed while writing
+the `two-factor/verify` route test**: the "advance the matrix" logic
+filtered `state.remainingFactors` by the literal submitted
+`factorType` value (`factor !== factorType`). For a `backup_code`
+submission this is always a no-op, since the literal string
+`"backup_code"` never appears in `remainingFactors` (which only ever
+holds real factor names like `"totp"`/`"email"`) - a backup code
+could never actually have advanced or completed the matrix in
+production; it would have silently re-chained to the same pending
+factor forever. Fixed by resolving the actually-satisfied factor as
+`state.remainingFactors[0]` regardless of which `factorType` value
+was used to satisfy it, and completing/filtering against that
+resolved value instead of the raw request field.
+
 ## Second addendum: sender display name, comma-vs-space correction, i18n-ready copy, M365 clarification
 
 ### Sender display name was wrongly claimed unsupported - corrected
