@@ -65,12 +65,30 @@ declare global {
         },
       ) => string;
       remove: (widgetId: string) => void;
+      reset: (widgetId: string) => void;
     };
   }
 }
 
+export type TurnstileWidgetHandle = {
+  reset: () => void;
+};
+
 type TurnstileWidgetProps = {
   onToken: (token: string | null) => void;
+  // ADR-0014: a Turnstile token is single-use and expires after 300
+  // seconds (Cloudflare's own documented limits) - a form that
+  // silently passed the widget early (Managed mode's common "low
+  // risk, no interaction needed" outcome) and then fails submission
+  // for ANY reason (wrong password, duplicate email, a slow typist)
+  // is left holding that same spent/stale token on retry, which
+  // Cloudflare's siteverify rejects with timeout-or-duplicate -
+  // surfaced to the visitor as a confusing generic "Captcha
+  // verification failed", even though nothing about their retry was
+  // actually a captcha problem. handleRef exposes reset() so every
+  // calling form can request a fresh challenge in its own failure
+  // branches, rather than only on a captcha-specific error.
+  handleRef?: React.RefObject<TurnstileWidgetHandle | null>;
 };
 
 // ADR-0014: Cloudflare Turnstile, Managed mode, explicit rendering (this
@@ -84,7 +102,7 @@ type TurnstileWidgetProps = {
 // Script Tags rule - the one documented exception there is the
 // accessibility flash-prevention script, which this is not, so it
 // goes through next/script like every other third-party script load.
-export function TurnstileWidget({ onToken }: TurnstileWidgetProps) {
+export function TurnstileWidget({ onToken, handleRef }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [scriptReady, setScriptReady] = useState(false);
@@ -126,22 +144,36 @@ export function TurnstileWidget({ onToken }: TurnstileWidgetProps) {
       // the widget fills its container's width instead, matching how
       // every other field in this form already behaves.
       size: "flexible",
-      // ADR-0014: Cloudflare's default ("always") renders the widget
-      // container visibly from page load, even before Managed mode
-      // has decided whether an interactive checkbox is actually
-      // needed - every visitor sees widget UI regardless of outcome.
-      // "interaction-only" keeps the form visually clean for the
-      // (likely common) silent-pass case, only showing the checkbox
-      // when Managed mode genuinely escalates to one - no change to
-      // the underlying verification logic, purely a UX improvement.
-      appearance: "interaction-only",
+      // ADR-0014 (reversed after live use): "interaction-only" was
+      // tried first to keep the form visually clean for the silent-
+      // pass case, but that left a real gap - on a desktop visitor
+      // Managed mode judges low-risk, the submit button sits
+      // disabled for the ~2-5 seconds the background check takes
+      // with absolutely nothing on screen explaining why, which
+      // reads as a broken/frozen page rather than "a check is
+      // running". Cloudflare's own default, "always", shows the
+      // widget/spinner from page load in every case, so there is
+      // always visible feedback - the one real cost (a checkbox
+      // placeholder is visible even on the common silent-pass path)
+      // is a smaller UX problem than an unexplained frozen button.
+      appearance: "always",
     });
+
+    if (handleRef) {
+      handleRef.current = {
+        reset: () => {
+          if (widgetIdRef.current) window.turnstile?.reset(widgetIdRef.current);
+        },
+      };
+    }
 
     return () => {
       if (widgetIdRef.current) window.turnstile?.remove(widgetIdRef.current);
+      if (handleRef) handleRef.current = null;
     };
-    // onToken is a stable setState-style callback from the parent
-    // form, deliberately excluded from this effect's deps; turnstileTheme
+    // onToken is a stable setState-style callback and handleRef is a
+    // stable ref object, both deliberately excluded from this
+    // effect's deps; turnstileTheme
     // IS included - Turnstile's render() has no live theme-update API,
     // so the only way to reflect a mid-session theme change is to tear
     // down and re-render the widget, which does restart the visitor's

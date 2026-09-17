@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { FormError } from "@/components/auth/form-error";
+
 export function ExportDataButton() {
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -34,14 +36,7 @@ export function ExportDataButton() {
 
   return (
     <div className="flex flex-col gap-2">
-      {error && (
-        <p
-          role="alert"
-          className="border border-surface-border bg-surface px-4 py-3 text-sm font-medium text-foreground"
-        >
-          {error}
-        </p>
-      )}
+      {error && <FormError message={error} />}
       <button
         type="button"
         onClick={handleExport}

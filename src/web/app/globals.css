@@ -17,6 +17,21 @@
   --accent-secondary: #7c3aed;
   --accent-foreground: #ffffff;
   --muted: #52525b;
+  /*
+   * --danger/--danger-border/--danger-surface: added alongside the
+   * three named profiles below - error alerts previously used the
+   * same neutral --surface-border/--surface tokens as an informational
+   * box, with no color signal at all that something had gone wrong.
+   * Held to the same WCAG bars as everything else on this page: text
+   * at 7:1 against --danger-surface, the border at 3:1 against
+   * --danger-surface - verified against the real relative-luminance
+   * formula (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance),
+   * not eyeballed. Paired with a warning icon on every alert, never
+   * color alone (src/web/AGENTS.md's accessibility rule).
+   */
+  --danger: #7f1d1d;
+  --danger-border: #7f1d1d;
+  --danger-surface: #fef2f2;
 }
 
 @theme inline {
@@ -28,6 +43,9 @@
   --color-accent-secondary: var(--accent-secondary);
   --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
+  --color-danger: var(--danger);
+  --color-danger-border: var(--danger-border);
+  --color-danger-surface: var(--danger-surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -42,6 +60,9 @@
     --accent-secondary: #a78bfa;
     --accent-foreground: #0a0a0f;
     --muted: #a1a1ad;
+    --danger: #fca5a5;
+    --danger-border: #fca5a5;
+    --danger-surface: #2a1215;
   }
 }
 
@@ -63,6 +84,9 @@
   --accent-secondary: #8b5cf6;
   --accent-foreground: #0b0f19;
   --muted: #b4bccb;
+  --danger: #fca5a5;
+  --danger-border: #fca5a5;
+  --danger-surface: #2a1220;
 }
 
 [data-a11y-theme="editorial"] {
@@ -74,6 +98,9 @@
   --accent-secondary: #5b21b6;
   --accent-foreground: #ffffff;
   --muted: #4f4f4f;
+  --danger: #7f1d1d;
+  --danger-border: #7f1d1d;
+  --danger-surface: #fbe9e5;
 }
 
 [data-a11y-theme="tactical"] {
@@ -85,6 +112,9 @@
   --accent-secondary: #ffff00;
   --accent-foreground: #000000;
   --muted: #cccccc;
+  --danger: #ff8888;
+  --danger-border: #ff8888;
+  --danger-surface: #1a0000;
 }
 
 html[data-a11y-scale="large"] {

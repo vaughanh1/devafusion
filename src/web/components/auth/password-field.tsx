@@ -2,6 +2,8 @@
 
 import { useId, useState } from "react";
 
+import { PASSWORD_RULES_ATTRIBUTE } from "@/features/auth/password-strength";
+
 type PasswordFieldProps = {
   id: string;
   label: string;
@@ -50,6 +52,14 @@ export function PasswordField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-describedby={describedBy}
+          // ADR-0014: passwordrules only makes sense for a NEW
+          // password field - it tells the browser's generator what
+          // to produce, which is meaningless (and would be
+          // misleading) on a current-password field being used to
+          // log in with an existing, already-chosen password.
+          {...(autoComplete === "new-password"
+            ? { passwordRules: PASSWORD_RULES_ATTRIBUTE }
+            : {})}
           className="min-h-11 w-full border border-surface-border bg-background px-3 pr-16 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <button

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { FormError } from "@/components/auth/form-error";
 import { authClient } from "@/features/auth/auth-client";
 
 const CONFIRMATION_PHRASE = "delete my account";
@@ -55,15 +56,7 @@ export function DeleteAccountForm() {
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
-      {error && (
-        <p
-          id={errorId}
-          role="alert"
-          className="border border-surface-border bg-surface px-4 py-3 text-sm font-medium text-foreground"
-        >
-          {error}
-        </p>
-      )}
+      {error && <FormError id={errorId} message={error} />}
 
       <div className="flex flex-col gap-2">
         <label

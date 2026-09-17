@@ -35,6 +35,7 @@ import { entry as clientLevelAuthHardening } from "./entries/client-level-auth-h
 import { entry as turnstileBuildTimeKeyAndCspFix } from "./entries/turnstile-build-time-key-and-csp-fix";
 import { entry as ga4BuildTimeIdFix } from "./entries/ga4-build-time-id-fix";
 import { entry as buttonCursorConsistency } from "./entries/button-cursor-consistency";
+import { entry as turnstileFirstUseAndUxPolish } from "./entries/turnstile-first-use-and-ux-polish";
 
 export type { LogEntry } from "./types";
 
@@ -80,6 +81,7 @@ const allEntries = [
   turnstileBuildTimeKeyAndCspFix,
   ga4BuildTimeIdFix,
   buttonCursorConsistency,
+  turnstileFirstUseAndUxPolish,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

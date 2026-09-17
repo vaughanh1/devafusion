@@ -11,10 +11,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // vi.mock factories are hoisted above top-level variable declarations,
 // so the mock functions they reference must be created via vi.hoisted
 // rather than a plain const.
-const { pushMock, refreshMock, signInEmailMock } = vi.hoisted(() => ({
+const { pushMock, refreshMock, signInEmailMock, turnstileResetMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   refreshMock: vi.fn(),
   signInEmailMock: vi.fn(),
+  turnstileResetMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -31,10 +32,17 @@ vi.mock("@/features/auth/auth-client", () => ({
 
 // ADR-0014: see sign-up-form.test.tsx's identical comment.
 vi.mock("@/components/auth/turnstile-widget", () => ({
-  TurnstileWidget: ({ onToken }: { onToken: (token: string) => void }) => {
+  TurnstileWidget: ({
+    onToken,
+    handleRef,
+  }: {
+    onToken: (token: string) => void;
+    handleRef?: React.RefObject<{ reset: () => void } | null>;
+  }) => {
     React.useEffect(() => {
       onToken("test-captcha-token");
-    }, [onToken]);
+      if (handleRef) handleRef.current = { reset: turnstileResetMock };
+    }, [onToken, handleRef]);
     return null;
   },
 }));
@@ -57,6 +65,7 @@ describe("LogInForm", () => {
     pushMock.mockReset();
     refreshMock.mockReset();
     signInEmailMock.mockReset();
+    turnstileResetMock.mockReset();
   });
 
   it("redirects to the given path on a successful log-in", async () => {
@@ -106,5 +115,27 @@ describe("LogInForm", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "Something went wrong. Please try again.",
     );
+  });
+
+  // ADR-0014: see sign-up-form.test.tsx's identical comment.
+  it("resets the Turnstile widget when the server rejects the log-in", async () => {
+    signInEmailMock.mockResolvedValue({
+      data: null,
+      error: { message: "No user found for this email." },
+    });
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
+
+    fillAndSubmit();
+
+    await waitFor(() => expect(turnstileResetMock).toHaveBeenCalled());
+  });
+
+  it("resets the Turnstile widget when the request throws", async () => {
+    signInEmailMock.mockRejectedValue(new Error("network down"));
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
+
+    fillAndSubmit();
+
+    await waitFor(() => expect(turnstileResetMock).toHaveBeenCalled());
   });
 });

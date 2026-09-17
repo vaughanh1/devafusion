@@ -343,6 +343,102 @@ all - just the same Node/`pg` script already working elsewhere in this
 repo.
 
 
+### First real-use feedback: Turnstile UX, error styling, password strength
+A round of genuine first-time use (not a code review) on the live
+site, immediately after the two build-time-inlining bugs above were
+fixed, surfaced five further issues - four real defects and one
+already-correctly-explained observation:
+
+- **`appearance: "interaction-only"` left a silent, unexplained
+  disabled button.** On a desktop visitor Managed mode judges
+  low-risk, Turnstile passes entirely in the background with no
+  checkbox ever shown - but the submit button still stays disabled
+  for the several seconds that background check takes, with nothing
+  on screen explaining why. This read as a frozen/broken page, not
+  "a check is running" - confirmed directly by using the live
+  sign-up/log-in forms on two different network paths (a UK VPN,
+  which escalated to a visible checkbox, and a bare connection, which
+  did not). Reversed to Cloudflare's own default, `"always"`, which
+  shows the widget/spinner from page load in every case - see
+  `turnstile-widget.tsx`'s updated comment for the full trade-off.
+- **A genuine, reproducible "Captcha verification failed" bug on
+  sign-up, not a fluke.** Turnstile tokens are single-use and expire
+  after 300 seconds (Cloudflare's own documented limits), and this
+  codebase never called `turnstile.reset()` anywhere - a token that
+  passed silently early (exactly the common case above) and was then
+  submitted after any failure (a duplicate email, a network hiccup,
+  simply taking a while to fill in the rest of the form) got resent
+  unchanged on retry, which Cloudflare's `siteverify` rejects with
+  `timeout-or-duplicate`, surfaced by Better Auth as the generic
+  "Captcha verification failed" - reproduced live by signing up with
+  an already-registered address. Fixed by exposing a
+  `TurnstileWidgetHandle.reset()` method (via a `handleRef` prop) and
+  calling it from every failure branch of `SignUpForm`, `LogInForm`,
+  and `ForgetPasswordForm` - not just a captcha-specific error branch,
+  since the stale-token problem is triggered by ANY retry, not only a
+  captcha-related one.
+- **Error messages carried no error signal at all.** Every
+  `role="alert"` box across the app used the same neutral
+  `--surface-border`/`--surface` tokens as a plain informational
+  box - no color, icon, or visual distinction from "just some text"
+  existed anywhere. Added `--danger`/`--danger-border`/
+  `--danger-surface` tokens (`globals.css`, WCAG-verified per profile:
+  9.16:1 default light, 9.25:1 default dark, 9.18:1 obsidian, 8.54:1
+  editorial, 8.75:1 tactical - all comfortably over the 7:1 text bar)
+  and a shared `FormError` component pairing that color with a
+  warning glyph, never color alone, per this file's own accessibility
+  rule. Replaces six duplicated inline `<p role="alert">` blocks
+  across `sign-up-form.tsx`, `log-in-form.tsx`,
+  `forget-password-form.tsx`, `reset-password-form.tsx`,
+  `export-data-button.tsx`, and `delete-account-form.tsx`.
+- **Password strength: only a bare `minLength={8}`.** Better Auth's
+  own `emailAndPassword` config exposes no complexity option, only
+  `minPasswordLength`/`maxPasswordLength` (verified directly against
+  `@better-auth/core`'s `init-options` type) - this left sign-up
+  relying entirely on the browser's own generic "Please lengthen this
+  text..." tooltip, with zero complexity requirement. Added
+  `features/auth/password-strength.ts` (length ≥ 8 + one uppercase +
+  one lowercase + one number + one special character) as the single
+  source of truth, enforced identically client-side
+  (`PasswordStrengthMeter`, a live pass/fail checklist replacing
+  reliance on the native browser message, on `SignUpForm` and
+  `ResetPasswordForm`) and server-side (`auth.ts`'s existing
+  `hooks.before` middleware, since a client-only check is trivially
+  bypassed by calling either endpoint directly).
+
+- **Google Password Manager's generated password sometimes omitted a
+  special character.** Confirmed against Apple's own official
+  `passwordrules` spec (the format both Safari and Chrome implement
+  for password generation): with no `passwordrules` attribute on the
+  input, the documented default is `allowed: ascii-printable` -
+  special characters are *permitted* but never *required*, so a
+  generated password can legitimately come back with only letters
+  and digits, silently failing this app's own new server-enforced
+  strength rule the moment the visitor tries to submit it. Fixed by
+  adding a `passwordRules` attribute to `PasswordField`'s underlying
+  `<input>` (only when `autoComplete="new-password"` - meaningless on
+  a login field's existing password), built once as
+  `PASSWORD_RULES_ATTRIBUTE` in `features/auth/password-strength.ts`
+  so the two rules are documented side by side, even though the
+  `passwordrules` spec's own character-class keywords
+  (`upper`/`lower`/`digit`/`special`) aren't spelled the same as
+  `PASSWORD_STRENGTH_RULES`'s ids and can't be mechanically derived
+  from them.
+
+**Observed but not a defect, documented for the record:** Chrome's
+Issues panel flagged "Content Security Policy of your site blocks the
+use of 'eval' in JavaScript" against `challenges.cloudflare.com`'s own
+script. This CSP is correctly doing its job - Cloudflare's own
+official CSP reference (`developers.cloudflare.com/turnstile/
+reference/content-security-policy/`) documents only `script-src`/
+`frame-src` as required, with no `unsafe-eval` allowance, and the
+widget rendered and functioned correctly in both the escalated-
+checkbox and silent-pass cases observed live. The "Deprecated feature:
+Protected Audience API" and "Page layout may be unexpected due to
+Quirks Mode" issues in the same panel are both flagged against
+`challenges.cloudflare.com`'s own hosted iframe document, not this
+site's markup - not actionable here.
+
 ### UK GDPR transparency notice on `/sign-up` and `/log-in`
 A real, confirmed gap, distinct from everything above: `/legal`
 already correctly documents the account-data lawful basis (contract,
