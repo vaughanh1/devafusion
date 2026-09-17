@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
+import { FormError } from "@/components/auth/form-error";
 import { PasswordField } from "@/components/auth/password-field";
+import type { TurnstileWidgetHandle } from "@/components/auth/turnstile-widget";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { authClient } from "@/features/auth/auth-client";
 
@@ -23,6 +25,14 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
+
+  // See sign-up-form.tsx's identical comment - a spent/stale
+  // Turnstile token must not be resent on any retry.
+  function resetCaptcha() {
+    setCaptchaToken(null);
+    turnstileRef.current?.reset();
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +67,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
         // enumeration. A single message for any credential failure.
         setError("Invalid email or password.");
         setIsSubmitting(false);
+        resetCaptcha();
         return;
       }
 
@@ -65,20 +76,13 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
     } catch {
       setError("Something went wrong. Please try again.");
       setIsSubmitting(false);
+      resetCaptcha();
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-6">
-      {error && (
-        <p
-          id={errorId}
-          role="alert"
-          className="border border-surface-border bg-surface px-4 py-3 text-sm font-medium text-foreground"
-        >
-          {error}
-        </p>
-      )}
+      {error && <FormError id={errorId} message={error} />}
 
       <div className="flex flex-col gap-2">
         <label htmlFor={emailId} className="text-sm font-medium text-foreground">
@@ -108,7 +112,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
         describedBy={error ? errorId : undefined}
       />
 
-      <TurnstileWidget onToken={setCaptchaToken} />
+      <TurnstileWidget onToken={setCaptchaToken} handleRef={turnstileRef} />
 
       <button
         type="submit"

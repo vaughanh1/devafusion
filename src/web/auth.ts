@@ -7,6 +7,7 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 
 import { db } from "@/db/client";
 import { verifyFormTimingToken } from "@/features/auth/form-timing-token";
+import { isPasswordStrongEnough } from "@/features/auth/password-strength";
 
 // Paths carrying a client-rendered form protected by the stateless
 // timing heuristic (docs/adr/0014, features/auth/form-timing-token.ts)
@@ -17,6 +18,19 @@ const TIMING_PROTECTED_PATHS = new Set([
   "/sign-in/email",
   "/request-password-reset",
 ]);
+
+// Paths that set a password, each under a different body field name -
+// features/auth/password-strength.ts is the single source of truth
+// for the complexity rule, enforced here as well as client-side
+// (sign-up-form.tsx, reset-password-form.tsx) since a client-only
+// check is trivially bypassed by calling either endpoint directly.
+// Better Auth's own emailAndPassword config exposes no complexity
+// option, only minPasswordLength/maxPasswordLength (verified directly
+// against @better-auth/core's init-options type).
+const PASSWORD_FIELD_BY_PATH: Record<string, string> = {
+  "/sign-up/email": "password",
+  "/reset-password": "newPassword",
+};
 
 // Better Auth owns identity/session/OAuth core only - MFA is deliberately
 // NOT handled by Better Auth's own twoFactor plugin. See
@@ -104,6 +118,20 @@ export const auth = betterAuth({
   // not a silently-disabled check.
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      const passwordField = PASSWORD_FIELD_BY_PATH[ctx.path];
+      if (passwordField) {
+        const password = (ctx.body as Record<string, unknown> | undefined)?.[
+          passwordField
+        ];
+        if (typeof password !== "string" || !isPasswordStrongEnough(password)) {
+          throw new APIError("BAD_REQUEST", {
+            message:
+              "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.",
+            code: "PASSWORD_TOO_WEAK",
+          });
+        }
+      }
+
       if (!TIMING_PROTECTED_PATHS.has(ctx.path)) return;
 
       const result = verifyFormTimingToken(

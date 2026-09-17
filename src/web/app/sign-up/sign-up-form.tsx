@@ -1,11 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
+import { FormError } from "@/components/auth/form-error";
 import { PasswordField } from "@/components/auth/password-field";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
+import type { TurnstileWidgetHandle } from "@/components/auth/turnstile-widget";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { authClient } from "@/features/auth/auth-client";
+import { isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from "@/features/auth/password-strength";
 
 type SignUpFormProps = {
   redirectPath: string;
@@ -25,6 +29,19 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
+
+  // ADR-0014: a Turnstile token is single-use and expires after 300
+  // seconds - any failure path below must reset the widget so a retry
+  // gets a fresh challenge rather than resending the same spent/stale
+  // token (which Cloudflare's siteverify would reject with
+  // timeout-or-duplicate, surfaced as a confusing "Captcha
+  // verification failed" for what is really a wrong-password or
+  // duplicate-email problem).
+  function resetCaptcha() {
+    setCaptchaToken(null);
+    turnstileRef.current?.reset();
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,6 +52,12 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
     // in src/web/AGENTS.md) - authClient methods resolve with a
     // { data, error } shape rather than throwing, but this still wraps
     // the call in case network failure throws before that shape forms.
+    if (!isPasswordStrongEnough(password)) {
+      setError("Please meet every password requirement listed below.");
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!captchaToken) {
       setError("Please complete the verification check before continuing.");
       setIsSubmitting(false);
@@ -65,6 +88,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
       if (signUpError) {
         setError(signUpError.message ?? "Could not create your account.");
         setIsSubmitting(false);
+        resetCaptcha();
         return;
       }
 
@@ -73,20 +97,13 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
     } catch {
       setError("Something went wrong. Please try again.");
       setIsSubmitting(false);
+      resetCaptcha();
     }
   }
 
   return (
     <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-6">
-      {error && (
-        <p
-          id={errorId}
-          role="alert"
-          className="border border-surface-border bg-surface px-4 py-3 text-sm font-medium text-foreground"
-        >
-          {error}
-        </p>
-      )}
+      {error && <FormError id={errorId} message={error} />}
 
       <div className="flex flex-col gap-2">
         <label htmlFor={nameId} className="text-sm font-medium text-foreground">
@@ -127,14 +144,16 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
         label="Password"
         name="password"
         autoComplete="new-password"
-        minLength={8}
+        minLength={MIN_PASSWORD_LENGTH}
         required
         value={password}
         onChange={setPassword}
         describedBy={error ? errorId : undefined}
       />
 
-      <TurnstileWidget onToken={setCaptchaToken} />
+      <PasswordStrengthMeter password={password} />
+
+      <TurnstileWidget onToken={setCaptchaToken} handleRef={turnstileRef} />
 
       <button
         type="submit"

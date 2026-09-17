@@ -3,8 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
+import { FormError } from "@/components/auth/form-error";
 import { PasswordField } from "@/components/auth/password-field";
+import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
 import { authClient } from "@/features/auth/auth-client";
+import { isPasswordStrongEnough, MIN_PASSWORD_LENGTH } from "@/features/auth/password-strength";
 
 type ResetPasswordFormProps = {
   token: string;
@@ -22,6 +25,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+
+    if (!isPasswordStrongEnough(newPassword)) {
+      setError("Please meet every password requirement listed below.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -45,27 +54,21 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-6">
-      {error && (
-        <p
-          id={errorId}
-          role="alert"
-          className="border border-surface-border bg-surface px-4 py-3 text-sm font-medium text-foreground"
-        >
-          {error}
-        </p>
-      )}
+      {error && <FormError id={errorId} message={error} />}
 
       <PasswordField
         id={passwordId}
         label="New password"
         name="newPassword"
         autoComplete="new-password"
-        minLength={8}
+        minLength={MIN_PASSWORD_LENGTH}
         required
         value={newPassword}
         onChange={setNewPassword}
         describedBy={error ? errorId : undefined}
       />
+
+      <PasswordStrengthMeter password={newPassword} />
 
       <button
         type="submit"

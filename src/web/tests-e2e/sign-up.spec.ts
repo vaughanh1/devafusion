@@ -52,7 +52,11 @@ test.describe("sign-up", () => {
     // substring matching by default, so an unqualified "Password"
     // query is a strict-mode violation matching both the input and
     // the button (confirmed by actually running this spec).
-    await page.getByLabel("Password", { exact: true }).fill("correct-horse-battery-staple");
+    // ADR-0014: must satisfy features/auth/password-strength.ts's
+    // rule (length + upper/lower/number/special) - the submit button
+    // stays disabled otherwise, per sign-up-form.tsx's own client-side
+    // gate, independent of the Turnstile token below.
+    await page.getByLabel("Password", { exact: true }).fill("Correct-Horse-Battery-9!");
 
     // Cloudflare's dummy "always passes" widget still runs a real
     // (fast) round trip before invoking the success callback that sets
