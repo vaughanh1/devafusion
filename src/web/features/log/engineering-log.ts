@@ -37,6 +37,8 @@ import { entry as ga4BuildTimeIdFix } from "./entries/ga4-build-time-id-fix";
 import { entry as buttonCursorConsistency } from "./entries/button-cursor-consistency";
 import { entry as turnstileFirstUseAndUxPolish } from "./entries/turnstile-first-use-and-ux-polish";
 import { entry as a11yLighthouseAudits } from "./entries/a11y-lighthouse-audits";
+import { entry as lighthouseHtmlReportTabs } from "./entries/lighthouse-html-report-tabs";
+import { entry as lighthouseCiFindingsTriage } from "./entries/lighthouse-ci-findings-triage";
 
 export type { LogEntry } from "./types";
 
@@ -84,6 +86,8 @@ const allEntries = [
   buttonCursorConsistency,
   turnstileFirstUseAndUxPolish,
   a11yLighthouseAudits,
+  lighthouseHtmlReportTabs,
+  lighthouseCiFindingsTriage,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

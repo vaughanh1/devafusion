@@ -20,3 +20,13 @@ paths = [
   '''\.next/.*''',
   '''\.tools/.*''',
 ]
+# generic-api-key false positive: pipelines/ci/web.yml's LighthouseCI job
+# sets a throwaway base64 fixture value for MFA_ENCRYPTION_KEY (decodes
+# to exactly 32 bytes, as two-factor-secret-cipher.ts requires) so
+# auth.ts's module-level betterAuth() call doesn't throw. It is scoped
+# only to that job's ephemeral, per-run local postgres:16 service
+# container - never a real key, never used against anything real - but
+# its base64 shape matches gitleaks's generic-api-key pattern.
+regexes = [
+  '''bGlnaHRob3VzZS1jaS1maXh0dXJlLW1mYS1rZXktMzI=''',
+]
