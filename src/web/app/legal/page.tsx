@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Privacy & Cookies",
   description:
     "How Devafusion handles account data, cookies, and Google Analytics, and the choices and rights available to you.",
+  // See log/page.tsx's identical comment - without this, this page
+  // silently inherits layout.tsx's root canonical "/".
+  alternates: { canonical: "/legal" },
 };
 
 export default function LegalPage() {

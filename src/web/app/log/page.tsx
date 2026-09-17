@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   title: "Engineering log",
   description:
     "A chronological public record of Devafusion's engineering changes, decisions and milestones.",
+  // Every page without its own alternates.canonical silently inherits
+  // layout.tsx's root "/" (Next.js metadata inheritance) - Lighthouse's
+  // SEO audit flags exactly that ("canonical points to the homepage
+  // instead of an equivalent page of content"). Same pattern already
+  // used by about/page.tsx and contact/page.tsx.
+  alternates: { canonical: "/log" },
 };
 
 export default function LogPage() {

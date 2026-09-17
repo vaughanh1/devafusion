@@ -416,3 +416,69 @@ stages:
               artifact: visual-regression-baseline-candidates
               publishLocation: pipeline
 
+      - job: LighthouseCI
+        displayName: Lighthouse CI (accessibility, best practices, SEO, performance)
+        dependsOn: []
+
+        steps:
+          - checkout: self
+
+          - task: UseNode@1
+            displayName: Install Node.js 24
+            inputs:
+              version: "24.x"
+
+          - task: Cache@2
+            displayName: Cache npm dependencies
+            inputs:
+              key: 'npm | "$(Agent.OS)" | $(webWorkingDirectory)/package-lock.json'
+              restoreKeys: |
+                npm | "$(Agent.OS)"
+              path: $(webWorkingDirectory)/node_modules
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npm ci
+              npm run build
+
+              cp -R .next/static .next/standalone/.next/static
+              if [ -d public ]; then
+                cp -R public .next/standalone/public
+              fi
+            displayName: Build application for Lighthouse
+            env:
+              # Dummy "always passes" fixture, same rationale as the
+              # E2ETests job's identical env var above - .lighthouserc.js
+              # deliberately never audits /sign-up or /log-in (Turnstile's
+              # third-party script would pollute performance scores), so
+              # this only needs to make the build succeed, not resemble
+              # production traffic.
+              NEXT_PUBLIC_TURNSTILE_SITE_KEY: "1x00000000000000000000AA"
+
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              npx lhci autorun
+            displayName: Run Lighthouse CI audits
+            env:
+              # form-timing-token.ts's HMAC key has no equivalent
+              # published test fixture (same rationale as
+              # playwright.config.ts's webServer.env) - lhci autorun
+              # boots the standalone server itself via
+              # .lighthouserc.js's startServerCommand, so it needs this
+              # set in its own environment too.
+              FORM_TIMING_TOKEN_SECRET: "lighthouse-ci-fixture-key-not-a-real-secret"
+
+          - task: PublishPipelineArtifact@1
+            displayName: Publish Lighthouse reports
+            condition: always()
+            inputs:
+              targetPath: "$(webWorkingDirectory)/.lighthouseci"
+              artifact: lighthouse-reports
+              publishLocation: pipeline
+

@@ -26,6 +26,9 @@ export async function generateMetadata({
   return {
     title: entry.title,
     description: entry.summary,
+    // Without this, every entry page silently inherits layout.tsx's
+    // root canonical "/" - see log/page.tsx's identical comment.
+    alternates: { canonical: `/log/${slug}` },
   };
 }
 

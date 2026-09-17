@@ -4,6 +4,9 @@ export const metadata: Metadata = {
   title: "Experiments",
   description:
     "Explore technical experiments in software engineering, cloud architecture and modern web development.",
+  // See log/page.tsx's identical comment - without this, this page
+  // silently inherits layout.tsx's root canonical "/".
+  alternates: { canonical: "/experiments" },
 };
 
 export default function ExperimentsPage() {
