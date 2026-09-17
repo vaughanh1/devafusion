@@ -7,6 +7,8 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 
 import { db } from "@/db/client";
 import { verifyFormTimingToken } from "@/features/auth/form-timing-token";
+import { deleteMfaDataForUser } from "@/features/auth/mfa/mfa-deletion-handler";
+import { TRUSTED_DEVICE_COOKIE_NAME } from "@/features/auth/mfa/trusted-device-cookie";
 import { isPasswordStrongEnough } from "@/features/auth/password-strength";
 
 // Paths carrying a client-rendered form protected by the stateless
@@ -117,6 +119,18 @@ export const auth = betterAuth({
   // forgets to include the hidden field is a build-time-visible bug,
   // not a silently-disabled check.
   hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      // UK GDPR Article 17: a deleted account's browser must never
+      // continue presenting the trusted-device bypass cookie -
+      // expiring it here (an httpOnly cookie, unreachable from
+      // client-side JS) rather than relying on the client to clear
+      // it itself, since the deletion flow's own success response
+      // has no reason to also carry application code that clears
+      // application cookies unless this hook does it centrally.
+      if (ctx.path === "/delete-user") {
+        ctx.setCookie(TRUSTED_DEVICE_COOKIE_NAME, "", { maxAge: 0 });
+      }
+    }),
     before: createAuthMiddleware(async (ctx) => {
       const passwordField = PASSWORD_FIELD_BY_PATH[ctx.path];
       if (passwordField) {
@@ -159,6 +173,19 @@ export const auth = betterAuth({
     // needed, so no beforeDelete/afterDelete hook is required here.
     deleteUser: {
       enabled: true,
+      // UK GDPR Article 17/32: explicit transactional cleanup of this
+      // project's own MFA matrix tables (user_security, backup_codes,
+      // trusted_devices) plus an accompanying auth_audit_logs entry -
+      // db/schema.ts's own ON DELETE CASCADE foreign keys already
+      // guarantee this via user.id's cascade, but beforeDelete runs
+      // first specifically so the audit trail is written while the
+      // rows it describes still exist, and so this stays a single,
+      // explicit, reasoned-about operation rather than an implicit
+      // side effect of the FK cascade alone (see
+      // features/auth/mfa/mfa-deletion-handler.ts's own comment).
+      beforeDelete: async (user) => {
+        await deleteMfaDataForUser(user.id, user.id);
+      },
     },
   },
 });

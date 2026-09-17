@@ -2,10 +2,8 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
+import { buildMfaExportPayload } from "@/features/auth/mfa/mfa-export-handler";
 import { consumeRateLimit } from "@/features/auth/rate-limit";
-
-const userSecurityRepository = new DrizzleUserSecurityRepository();
 
 // ADR-0014: outside Better Auth's own router (see two-factor/verify's
 // identical comment) - a looser window/max than the TOTP route, since
@@ -44,9 +42,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const security = await userSecurityRepository.findByUserId(
-      session.user.id,
-    );
+    const security = await buildMfaExportPayload(session.user.id);
 
     const exportPayload = {
       exportedAt: new Date().toISOString(),
@@ -58,9 +54,7 @@ export async function GET(request: NextRequest) {
         createdAt: session.user.createdAt,
         updatedAt: session.user.updatedAt,
       },
-      security: {
-        twoFactorEnabled: security?.twoFactorEnabled ?? false,
-      },
+      security,
       currentSession: {
         createdAt: session.session.createdAt,
         expiresAt: session.session.expiresAt,

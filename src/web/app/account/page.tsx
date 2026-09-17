@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { DeleteAccountForm } from "@/app/account/delete-account-form";
 import { ExportDataButton } from "@/app/account/export-data-button";
+import { MfaSettingsDashboard } from "@/components/account/mfa-settings-dashboard";
 
 export const metadata: Metadata = {
   title: "Your account",
@@ -46,6 +47,17 @@ export default async function AccountPage() {
           <span className="font-medium text-foreground">Email:</span>{" "}
           {session.user.email}
         </p>
+      </div>
+
+      <div className="mt-12 border-t border-surface-border pt-10">
+        <h2 className="text-xl font-semibold text-foreground">
+          Multi-factor authentication
+        </h2>
+        <p className="mt-2 text-lg leading-8 text-muted">
+          Choose the second factor required at sign-in and how often it is
+          re-challenged.
+        </p>
+        <MfaSettingsDashboard />
       </div>
 
       <div className="mt-12 border-t border-surface-border pt-10">

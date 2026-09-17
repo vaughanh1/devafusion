@@ -39,6 +39,7 @@ import { entry as turnstileFirstUseAndUxPolish } from "./entries/turnstile-first
 import { entry as a11yLighthouseAudits } from "./entries/a11y-lighthouse-audits";
 import { entry as lighthouseHtmlReportTabs } from "./entries/lighthouse-html-report-tabs";
 import { entry as lighthouseCiFindingsTriage } from "./entries/lighthouse-ci-findings-triage";
+import { entry as selfHostedMfaMatrix } from "./entries/self-hosted-mfa-matrix";
 
 export type { LogEntry } from "./types";
 
@@ -88,6 +89,7 @@ const allEntries = [
   a11yLighthouseAudits,
   lighthouseHtmlReportTabs,
   lighthouseCiFindingsTriage,
+  selfHostedMfaMatrix,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

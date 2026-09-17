@@ -3,20 +3,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // vi.mock factories are hoisted above top-level variable declarations,
 // so the mock functions they reference must be created via
 // vi.hoisted rather than a plain const.
-const { getSessionMock, findByUserIdMock, consumeRateLimitMock } = vi.hoisted(() => ({
-  getSessionMock: vi.fn(),
-  findByUserIdMock: vi.fn(),
-  consumeRateLimitMock: vi.fn(),
-}));
+const { getSessionMock, buildMfaExportPayloadMock, consumeRateLimitMock } =
+  vi.hoisted(() => ({
+    getSessionMock: vi.fn(),
+    buildMfaExportPayloadMock: vi.fn(),
+    consumeRateLimitMock: vi.fn(),
+  }));
 
 vi.mock("@/auth", () => ({
   auth: { api: { getSession: getSessionMock } },
 }));
 
-vi.mock("@/features/auth/mfa/drizzle-user-security-repository", () => ({
-  DrizzleUserSecurityRepository: class {
-    findByUserId = findByUserIdMock;
-  },
+vi.mock("@/features/auth/mfa/mfa-export-handler", () => ({
+  buildMfaExportPayload: buildMfaExportPayloadMock,
 }));
 
 // ADR-0014: this route now rate-limits before doing anything else -
@@ -41,7 +40,7 @@ function buildRequest() {
 describe("GET /api/account/export", () => {
   afterEach(() => {
     getSessionMock.mockReset();
-    findByUserIdMock.mockReset();
+    buildMfaExportPayloadMock.mockReset();
     consumeRateLimitMock.mockReset();
   });
 
@@ -70,10 +69,12 @@ describe("GET /api/account/export", () => {
         expiresAt: "2026-01-08T00:00:00.000Z",
       },
     });
-    findByUserIdMock.mockResolvedValue({
-      userId: "u1",
-      twoFactorSecret: "should-never-appear-in-export",
+    buildMfaExportPayloadMock.mockResolvedValue({
+      requiredFactors: ["password", "totp"],
+      mfaFrequency: "always",
       twoFactorEnabled: true,
+      unusedBackupCodeCount: 8,
+      trustedDevices: [],
     });
 
     const response = await GET(buildRequest());
@@ -88,7 +89,13 @@ describe("GET /api/account/export", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
-    expect(body.security).toEqual({ twoFactorEnabled: true });
+    expect(body.security).toEqual({
+      requiredFactors: ["password", "totp"],
+      mfaFrequency: "always",
+      twoFactorEnabled: true,
+      unusedBackupCodeCount: 8,
+      trustedDevices: [],
+    });
     expect(JSON.stringify(body)).not.toContain("should-never-appear-in-export");
   });
 

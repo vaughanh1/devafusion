@@ -1,0 +1,37 @@
+import type { LogEntry } from "../types";
+
+export const entry: LogEntry = {
+  slug: "self-hosted-mfa-matrix",
+  date: "2026-09-17",
+  title: "Extensible self-hosted MFA matrix: sequential factors, encrypted-column customType, session-withholding login flow",
+  summary:
+    "Extended ADR-0012's single-optional-TOTP-factor MFA into a dynamically sequenced matrix (required_factors: text[]) supporting multiple ordered factors, backup codes, a PECR-compliant trusted-device bypass, and UK GDPR SAR export/deletion coverage. Corrected several inaccuracies in an initial design drafted without access to this codebase: better-auth@^1.7.5 has neither a dontCreateSession flag nor a public createSession surface (confirmed against its compiled source), Resend has no per-email tracking override (domain-level only), and Turnstile's captcha plugin never fires for a direct auth.api.signInEmail() call.",
+  tags: ["architecture", "database", "security", "typescript", "gdpr"],
+  decisions: [
+    "Replaced the manual encryptTwoFactorSecret/decryptTwoFactorSecret call convention (features/auth/mfa/two-factor-secret-cipher.ts) with a Drizzle customType (encryptedSecretText, db/schema.ts) whose toDriver/fromDriver hooks call the encryption boundary transparently - every repository method now reads/writes plaintext, making the encryption boundary structural rather than a convention that could be forgotten at a new call site. Stored format changed from dot-delimited base64 to colon-delimited hex (ivHex:authTagHex:ciphertextHex) - accepted as a one-time re-enrolment cost since no live account had TOTP enabled yet.",
+    "login-step1 lets Better Auth's own signInEmail mint a real session (asResponse: true) and withholds its Set-Cookie headers inside an in-memory MFA progress cache (features/auth/mfa/mfa-session-cache.ts, lru-cache, max 5000 entries, 3-minute TTL) until every remaining factor passes, rather than deferring session creation - the only viable approach once dontCreateSession/createSession were confirmed not to exist on the installed version.",
+    "Turnstile is verified manually in login-step1 against the real siteverify endpoint (features/auth/verify-turnstile-token.ts) rather than relying on Better Auth's captcha plugin, whose onRequest hook only fires on Better Auth's own router dispatch pipeline - identical to the rate-limit-plugin bypass ADR-0014 already documented for routes calling auth.api directly.",
+    "Backup/recovery codes are hashed with Node's built-in scryptSync (memory-hard) rather than a fast hash, matching password-hashing practice - a backup code has far less entropy than the TOTP seed it substitutes for, unlike two_factor_secret itself, which is encrypted and decrypted, never compared.",
+    "Added a dedicated, authenticated /api/auth/two-factor/confirm route to flip two_factor_enabled to true after enrolment, distinct from the pre-auth sequential matrix verification route - separates 'prove you can generate a valid code right now, during enrolment' from 'verify one factor in an in-progress login', which have different session/rate-limit shapes.",
+    "Added --warning/--warning-border/--warning-surface CSS design tokens (app/globals.css) for MfaSettingsDashboard's weaker-than-default-configuration alert, independently WCAG-contrast-checked for the default theme, dark-mode media query, and all three named accessibility profiles (Tactical's warning avoids reusing that theme's own yellow --accent, to stay visually distinct from normal interactive elements).",
+    "Deliberately left social-login (OAuth) interaction with this MFA matrix and passkey/WebAuthn enrolment out of scope for this slice - required_factors: text[] already accommodates a future 'webauthn' string with zero schema refactoring, and gating a social-login user needs a separate after-hook on Better Auth's own signIn.social/callback paths (mirroring this slice's own deleteUser after-hook pattern), both tracked as real follow-ups in docs/adr/0015's Consequences section rather than silently ignored.",
+  ],
+  milestones: [
+    "Extended db/schema.ts: mfaFrequencyEnum, userSecurity.requiredFactors/mfaFrequency, new backupCodes/trustedDevices/authAuditLogs tables - generated and applied drizzle/0002_sticky_orphan.sql against a real, fresh postgres:16 Docker container, verifying every column, default, and ON DELETE CASCADE foreign key via psql \\d.",
+    "Added features/auth/mfa/: encrypted-column-cipher.ts, mfa-session-cache.ts, backup-code-hash.ts, send-email-otp.ts, verify-turnstile-token.ts (features/auth/), plus repository/adapter pairs for backup codes and trusted devices mirroring the existing DrizzleUserSecurityRepository pattern.",
+    "Added app/api/auth/login-step1/route.ts (policy evaluation, trusted-device bypass, session withholding), rewrote app/api/auth/two-factor/verify/route.ts into the sequential matrix verifier, and added app/api/auth/two-factor/enrol/route.ts + two-factor/confirm/route.ts for TOTP enrolment and its confirmation step.",
+    "Added app/api/user/security/settings/route.ts (password-reconfirmed settings mutation, zeroing two_factor_secret on TOTP deactivation via a new clearTwoFactorSecret repository method) and components/account/mfa-settings-dashboard.tsx, wired into app/account/page.tsx.",
+    "Extended the existing SAR export (app/api/account/export/route.ts) via features/auth/mfa/mfa-export-handler.ts (metadata only - never the secret, a hash, or a trusted-device token) and wired a transactional deletion cascade (features/auth/mfa/mfa-deletion-handler.ts) into auth.ts's deleteUser beforeDelete/after hooks, including expiring the trusted-device cookie on account deletion.",
+    "Added lru-cache and resend as new dependencies (src/web/package.json) - npm audit confirmed zero new vulnerabilities beyond the already-accepted, pre-existing drizzle-kit/esbuild/lighthouse dev-tooling advisories.",
+    "Removed the now-superseded features/auth/mfa/two-factor-secret-cipher.ts, its test suite, and verify-totp.zod.ts.",
+    "Wrote docs/adr/0015-self-hosted-mfa-matrix.md documenting every correction to the initial design and every consequence/follow-up.",
+  ],
+  validation: [
+    "npm run typecheck and npm run lint (eslint --max-warnings 0) both passed clean.",
+    "npm run test:unit: 91 passed, 0 failed across 16 files (the retired two-factor-secret-cipher suite removed alongside its module, not left silently skipped; app/api/account/export's suite updated to mock the new mfa-export-handler).",
+    "npm run build succeeded - all five new/changed API routes (login-step1, two-factor/enrol, two-factor/confirm, two-factor/verify, user/security/settings) correctly reported as Dynamic.",
+    "drizzle-kit generate/migrate applied cleanly against a real, freshly started postgres:16 Docker container; every new table's columns, defaults, and ON DELETE CASCADE foreign keys verified directly via psql, not assumed from the migration file alone.",
+    "npm audit: 0 new vulnerabilities beyond the already-documented, accepted drizzle-kit/esbuild/lighthouse dev-tooling advisories.",
+  ],
+  visibility: "public",
+};
