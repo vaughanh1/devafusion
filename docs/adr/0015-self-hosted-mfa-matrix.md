@@ -58,16 +58,47 @@ itself (`features/auth/verify-turnstile-token.ts`,
 `https://challenges.cloudflare.com/turnstile/v0/siteverify` - not the
 bare `cloudflare.com` host an earlier draft of this design assumed).
 
-### Resend has no per-email tracking override - domain-level only
-An earlier draft assumed a `tracking: { click: false, open: false }`
-option on Resend's send-email call. Verified directly against the
-installed `resend@^6.28.1` package's `CreateEmailOptions` type and
-Resend's own current API reference: no such per-email field exists.
-Open/click tracking is a domain-level setting only
-(`open_tracking`/`click_tracking` on the `Domain`/`DomainApiOptions`
-types) - `features/auth/mfa/send-email-otp.ts` documents this as an
-operational invariant (the sending domain must have both disabled at
-setup) rather than fabricating a nonexistent per-send parameter.
+### Resend rejected for UK GDPR data-residency, replaced by Azure Communication Services Email
+Resend was the initial choice for email-OTP dispatch, but was
+rejected after live investigation of its actual region behaviour: its
+nearest-to-UK offering ("EU West", Ireland) is a **latency-
+optimization region only** - email content itself is stored in the
+US regardless of which region a Resend account is configured with,
+confirmed directly through Resend's own account setup rather than
+assumed. This is not adequate for an MFA code, which is personal data
+tied to an identified UK user (UK GDPR Article 44's restriction on
+transfers outside the UK/adequate jurisdictions without a valid
+transfer mechanism, and this project's own already-settled data-
+sovereignty position from ADR-0012's third-party-identity-SaaS
+rejection).
+
+Replaced with **Azure Communication Services Email**
+(`@azure/communication-email`, `features/auth/mfa/send-email-otp.ts`)
+- a first-party Microsoft service already inside this project's own
+Azure tenant, with `data_location = "UK"` as a genuine, resource-
+level Terraform attribute. Microsoft's own documented privacy page
+states plainly that "the system processes email message content in
+real-time, using the resource's Data Location specified by you during
+resource provisioning" - a materially stronger, resource-scoped
+guarantee than a SaaS vendor's account-level region setting. It also
+removes the manual Key Vault step entirely for this integration: the
+connection string (`azurerm_communication_service.primary_connection_string`)
+and the Azure-managed domain's sender address are both Terraform-
+computed outputs of resources Terraform itself provisions
+(`infrastructure/app/modules/email/`), not human-invented secret
+values - a different case from every ADR-0004 "sanctioned manual
+step" secret elsewhere in this project.
+
+An earlier draft (written before Resend's region behaviour was
+checked) assumed a `tracking: { click: false, open: false }` option
+on Resend's send-email call, which does not exist on Resend's real
+API (open/click tracking there is domain-level only). Azure
+Communication Services Email's tracking control is a genuine
+Terraform-declared resource attribute
+(`azurerm_email_communication_service_domain.user_engagement_tracking_enabled`,
+defaulting to `false`), reinforced per-send via the SDK's own
+`disableUserEngagementTracking` field - both layers enforced in code,
+not a dashboard toggle that could silently drift.
 
 ### Backup codes: scrypt over SHA-256
 A backup/recovery code has far less entropy than the TOTP seed it
@@ -98,6 +129,17 @@ compared, only decrypted and fed into `otpauth`.
   repository-pattern boundary ADR-0011 established; carrying the
   already-resolved `session.user.email` from Step 1 is simpler and
   avoids a second, unrelated query.
+- **Resend** - initially chosen, then rejected once its actual region
+  behaviour was checked (see this ADR's own Resend rationale above):
+  a latency-optimization region only, not a data-residency guarantee.
+- **A custom verified domain (`mfa.devafusion.com`) instead of Azure's
+  managed `*.azurecomm.net` domain** - deferred, not rejected outright:
+  a custom domain needs real SPF/DKIM/DMARC DNS records on a live
+  zone, a materially larger change than this slice's own scope. The
+  Azure-managed domain's lower deliverability ceiling is an accepted
+  trade-off for an MFA OTP email (checked once per login by a user
+  actively expecting it), unlike a marketing or first-contact
+  transactional email where inbox placement matters far more.
 
 ## Consequences
 - `db/schema.ts`: `mfaFrequencyEnum`, `userSecurity.requiredFactors`/
@@ -107,33 +149,32 @@ compared, only decrypted and fed into `otpauth`.
   (every column, default, and `ON DELETE CASCADE` FK checked via
   `psql \d`, per `src/web/AGENTS.md`'s mandatory local migration
   testing rule).
-- New dependencies: `lru-cache` (MFA progress cache), `resend` (email
-  OTP dispatch) - both added to `src/web/package.json` as a
-  deliberate, logged decision (root `AGENTS.md`'s Standardized
-  Tooling rule); `npm audit` confirmed zero new vulnerabilities
-  beyond the already-accepted, pre-existing `drizzle-kit`/`esbuild`/
-  `lighthouse` dev-tooling advisories.
+- New dependencies: `lru-cache` (MFA progress cache),
+  `@azure/communication-email` (email OTP dispatch, replacing an
+  earlier `resend` choice - see this ADR's own rationale above) -
+  both added to `src/web/package.json` as a deliberate, logged
+  decision (root `AGENTS.md`'s Standardized Tooling rule); `npm
+  audit` confirmed zero new vulnerabilities beyond the already-
+  accepted, pre-existing `drizzle-kit`/`esbuild`/`lighthouse` dev-
+  tooling advisories.
 - New CSS design tokens: `--warning`/`--warning-border`/
   `--warning-surface` (`app/globals.css`), added across the default
   theme and all three named accessibility profiles, each independently
   WCAG-contrast-checked against the real relative-luminance formula -
   mirrors `--danger`'s existing pattern exactly.
-- New Key Vault secrets for the email-OTP factor, wired into
-  Terraform per ADR-0004's sanctioned-manual-step pattern (a human
-  creates the value in Key Vault first, Terraform only ever reads it
-  via `data "azurerm_key_vault_secret"`):
-  `resend-api-key-devafusion` (a Resend API key, generated in the
-  Resend dashboard for a domain with `open_tracking`/`click_tracking`
-  left disabled - see this ADR's own Resend rationale above) and
-  `resend-mfa-from-address-devafusion` (the verified From address on
-  that domain, e.g. `"Devafusion <mfa@devafusion.com>"` - not itself
-  sensitive but kept alongside the API key rather than a plain
-  `.tfvars` literal, matching `turnstile_site_key`'s existing
-  precedent). Both are read into the web app's `RESEND_API_KEY`/
-  `RESEND_MFA_FROM_ADDRESS` app_settings
-  (`infrastructure/app/environments/dev/web.tf`).
-  `terraform fmt -check` and `terraform validate` both passed for
-  `infrastructure/app`.
+- New `infrastructure/app/modules/email/` module: `azurerm_email_communication_service`
+  (`data_location = "UK"`), `azurerm_email_communication_service_domain`
+  (Azure-managed domain, `user_engagement_tracking_enabled = false`),
+  `azurerm_communication_service` (exposes `primary_connection_string`),
+  and `azurerm_communication_service_email_domain_association` linking
+  them. Both `ACS_EMAIL_CONNECTION_STRING`/`ACS_EMAIL_MFA_SENDER_ADDRESS`
+  app_settings (`infrastructure/app/environments/dev/web.tf`) are
+  Terraform-computed module outputs - **no manual Key Vault step is
+  required for this integration at all**, unlike every other secret
+  in this project (ADR-0004): nothing here is a human-invented
+  credential, since Terraform itself provisions the resource that
+  generates the connection string. `terraform fmt -check` and
+  `terraform validate` both passed for `infrastructure/app`.
 - **Passkeys/WebAuthn**: `required_factors: text[]` already
   accommodates a future `'webauthn'` string with zero schema
   refactoring - adding it is a new factor-type branch in

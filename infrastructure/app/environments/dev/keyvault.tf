@@ -119,31 +119,4 @@ data "azurerm_key_vault_secret" "form_timing_token_secret" {
   depends_on = [module.keyvault]
 }
 
-# ADR-0015: Resend's API key, used server-side by
-# features/auth/mfa/send-email-otp.ts to dispatch the email-OTP MFA
-# factor. Created manually in Key Vault after generating an API key
-# in the Resend dashboard for the sending domain provisioned there -
-# same sanctioned-manual-step pattern as every other secret here
-# (ADR-0004). Terraform only ever reads it.
-data "azurerm_key_vault_secret" "resend_api_key" {
-  name         = "resend-api-key-devafusion"
-  key_vault_id = module.keyvault.key_vault_id
 
-  depends_on = [module.keyvault]
-}
-
-# ADR-0015: the verified From address for MFA email-OTP dispatch (e.g.
-# "Devafusion <mfa@devafusion.com>") - not itself sensitive, but kept
-# in Key Vault alongside resend_api_key above rather than a plain
-# .tfvars literal, matching this project's existing practice for
-# non-sensitive values generated/verified as part of the same
-# provisioning step as a real secret (see turnstile_site_key's
-# identical rationale above). Must be an address on a domain already
-# verified in the Resend dashboard with open_tracking/click_tracking
-# left disabled (docs/adr/0015's Consequences section).
-data "azurerm_key_vault_secret" "resend_mfa_from_address" {
-  name         = "resend-mfa-from-address-devafusion"
-  key_vault_id = module.keyvault.key_vault_id
-
-  depends_on = [module.keyvault]
-}

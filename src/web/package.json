@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "@azure/communication-email": "^1.1.0",
     "@better-auth/drizzle-adapter": "^1.7.5",
     "@next/third-parties": "16.3.2",
     "better-auth": "^1.7.5",
@@ -33,7 +34,6 @@
     "next": "^16.3.5",
     "otpauth": "^9.5.2",
     "pg": "^8.23.0",
-    "resend": "^6.28.1",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "^0.0.1",
