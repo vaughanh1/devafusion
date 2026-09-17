@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Projects",
   description:
     "Selected software engineering and cloud projects developed through Devafusion.",
+  // See log/page.tsx's identical comment - without this, this page
+  // silently inherits layout.tsx's root canonical "/".
+  alternates: { canonical: "/projects" },
 };
 
 export default function ProjectsPage() {

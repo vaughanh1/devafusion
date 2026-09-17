@@ -15,6 +15,10 @@ export async function generateMetadata({
   return {
     title,
     description: `Read about the ${title} experiment from Devafusion.`,
+    // See log/page.tsx's identical comment - without this, every
+    // experiment page silently inherits layout.tsx's root canonical
+    // "/".
+    alternates: { canonical: `/experiments/${slug}` },
   };
 }
 
