@@ -30,6 +30,10 @@ export default defineConfig({
       "app/**/__tests__/**/*.test.{ts,tsx}",
       "components/**/__tests__/**/*.test.{ts,tsx}",
       "features/**/__tests__/**/*.test.{ts,tsx}",
+      // Root-level config files (next.config.ts, etc.) have no
+      // app/components/features home of their own - __tests__/ sits
+      // directly under src/web/ for exactly this class of file.
+      "__tests__/**/*.test.{ts,tsx}",
     ],
     exclude: ["node_modules", ".next", "tests-e2e"],
     coverage: {
@@ -40,6 +44,7 @@ export default defineConfig({
         "app/**/*.{ts,tsx}",
         "components/**/*.{ts,tsx}",
         "features/**/*.{ts,tsx}",
+        "next.config.ts",
       ],
       exclude: [
         "**/__tests__/**",

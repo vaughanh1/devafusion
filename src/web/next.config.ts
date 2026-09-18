@@ -14,6 +14,22 @@ const nextConfig: NextConfig = {
   // every existing third-party script (GA4 via @next/third-parties,
   // etc.) as its own, larger, separately-scoped effort.
   async headers() {
+    // Next.js/React's dev-mode Fast Refresh and debugging tooling
+    // (reconstructing callstacks, source-map evaluation) genuinely
+    // call eval() - confirmed via the browser's own console warning
+    // ("React requires eval() in development mode... React will
+    // never use eval() in production mode"). Without 'unsafe-eval'
+    // in script-src, npm run dev logs that warning on every page
+    // load. Scoped to development only via NODE_ENV, not a static
+    // addition - production's CSP must stay exactly as tight as it
+    // is today; a real production build never calls eval() at all,
+    // so granting the directive there would only widen the attack
+    // surface for zero functional benefit.
+    const scriptSrc =
+      process.env.NODE_ENV === "development"
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://challenges.cloudflare.com https://www.googletagmanager.com"
+        : "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.googletagmanager.com";
+
     return [
       {
         source: "/:path*",
@@ -50,7 +66,7 @@ const nextConfig: NextConfig = {
             //   www.-only version originally shipped here) rather than
             //   the bare www host.
             value: [
-              "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.googletagmanager.com",
+              scriptSrc,
               "frame-src 'self' https://challenges.cloudflare.com",
               "connect-src 'self' https://challenges.cloudflare.com https://*.google-analytics.com https://www.googletagmanager.com",
             ].join("; "),
