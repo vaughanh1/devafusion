@@ -8,17 +8,24 @@
 // point instead: see the "server-only" import in
 // features/log/schema/log-entries.zod.ts, which fires before this file
 // is ever reached in that import chain.
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
   customType,
   index,
   integer,
+  pgEnum,
   pgTable,
   text,
   timestamp,
+  uuid,
 } from "drizzle-orm/pg-core";
+
+import {
+  decryptColumnValue,
+  encryptColumnValue,
+} from "@/features/auth/mfa/encrypted-column-cipher";
 
 // Postgres's citext type has no native Drizzle column helper - defined
 // as a customType per Drizzle's own documented pattern. Requires the
@@ -31,6 +38,41 @@ const citext = customType<{ data: string }>({
     return "citext";
   },
 });
+
+// Field-level, transparent envelope encryption for any column holding a
+// credential-equivalent secret (MFA matrix slice) - the customType's
+// toDriver/fromDriver hooks call features/auth/mfa/encrypted-column-
+// cipher.ts on every write/read, so callers (repositories, routes)
+// pass and receive plaintext, exactly like a plain text() column, and
+// Postgres itself only ever stores ivHex:authTagHex:ciphertextHex.
+// Supersedes the previous manual encryptTwoFactorSecret/
+// decryptTwoFactorSecret call pattern (features/auth/mfa/two-factor-
+// secret-cipher.ts, now removed) - that module required every caller
+// to remember to encrypt before insert and decrypt after select, an
+// easy step to forget; a customType makes the boundary structural
+// instead of conventional. This is a schema-shape change (dot-
+// delimited base64 -> colon-delimited hex), captured in this slice's
+// migration, not a live data-preserving rename - see this slice's ADR
+// addendum for the accepted one-time re-enrolment consequence for any
+// account that had already enabled TOTP before this change (none did,
+// per this project's own live user count at the time of writing).
+const encryptedSecretText = customType<{ data: string; driverData: string }>({
+  dataType() {
+    return "text";
+  },
+  toDriver(value: string): string {
+    return encryptColumnValue(value);
+  },
+  fromDriver(value: string): string {
+    return decryptColumnValue(value);
+  },
+});
+
+// UK GDPR Article 25 (data protection by design): a fixed, closed set
+// of re-challenge frequencies rather than a free-text column - 'always'
+// is the default in user_security.mfa_frequency below, so a new row
+// never silently trusts a device without an explicit opt-in.
+export const mfaFrequencyEnum = pgEnum("mfa_frequency", ["always", "30_days"]);
 
 // Column shape mirrors src/web/features/log/types.ts's LogEntry exactly -
 // this table is the eventual replacement for the static entries/*.ts
@@ -158,18 +200,36 @@ export const accountRelations = relations(account, ({ one }) => ({
   }),
 }));
 
-// Self-built MFA table (docs/adr/0012) - deliberately not Better Auth's
-// own `twoFactor` plugin, which stores its primary TOTP seed as plain
-// text with no read-side decrypt hook available. two_factor_secret
-// holds an application-layer envelope-encrypted value (see
-// features/auth/mfa/two-factor-secret-cipher.ts) - Postgres itself
-// never holds a recoverable plaintext seed. One-to-one with user,
-// cascade-deleted with it for GDPR "right to be forgotten".
+// Self-built MFA matrix table (docs/adr/0012, extended for the MFA
+// matrix slice) - deliberately not Better Auth's own `twoFactor`
+// plugin, which stores its primary TOTP seed as plain text with no
+// read-side decrypt hook available. two_factor_secret is the
+// encryptedSecretText customType (transparent AES-256-GCM at the
+// column boundary - see encrypted-column-cipher.ts above) - Postgres
+// itself never holds a recoverable plaintext seed, and every caller
+// (repositories, routes) reads/writes plain text with zero manual
+// encrypt/decrypt calls. One-to-one with user, cascade-deleted with it
+// for GDPR "right to be forgotten".
+//
+// required_factors defaults to ['password', 'totp'] (UK GDPR Article
+// 25, data protection by design/default) - a brand-new user row
+// always demands the strongest available factor set until a user
+// deliberately weakens it via the settings dashboard, never the
+// reverse. text[] rather than a normalized child table: this project
+// already established that pattern for decisions/milestones/
+// validation in features/log's LogEntry shape - the array is always
+// read/written as a whole ordered sequence, never filtered by
+// individual element.
 export const userSecurity = pgTable("user_security", {
   userId: text("user_id")
     .primaryKey()
     .references(() => user.id, { onDelete: "cascade" }),
-  twoFactorSecret: text("two_factor_secret"),
+  requiredFactors: text("required_factors")
+    .array()
+    .notNull()
+    .default(sql`ARRAY['password', 'totp']::text[]`),
+  mfaFrequency: mfaFrequencyEnum("mfa_frequency").default("always").notNull(),
+  twoFactorSecret: encryptedSecretText("two_factor_secret"),
   twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
@@ -179,12 +239,100 @@ export const userSecurity = pgTable("user_security", {
     .defaultNow(),
 });
 
-export const userSecurityRelations = relations(userSecurity, ({ one }) => ({
+export const userSecurityRelations = relations(userSecurity, ({ one, many }) => ({
   user: one(user, {
     fields: [userSecurity.userId],
     references: [user.id],
   }),
+  backupCodes: many(backupCodes),
+  trustedDevices: many(trustedDevices),
 }));
+
+// UK GDPR Article 32 (availability/resilience of processing) - one-time
+// recovery codes for when a user has lost their TOTP device. Hashed,
+// never stored in plaintext or reversibly encrypted (there is no
+// legitimate need to ever read a backup code back out - only to
+// compare a hash), burned individually via used_at rather than deleted
+// on use, so a user's remaining-code count can be reported (see the
+// SAR export handler) without ever exposing the codes themselves.
+export const backupCodes = pgTable(
+  "backup_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userSecurity.userId, { onDelete: "cascade" }),
+    hashedCode: text("hashed_code").notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("backup_codes_userId_idx").on(table.userId)],
+);
+
+export const backupCodesRelations = relations(backupCodes, ({ one }) => ({
+  userSecurity: one(userSecurity, {
+    fields: [backupCodes.userId],
+    references: [userSecurity.userId],
+  }),
+}));
+
+// UK PECR compliance (docs/adr's MFA-matrix slice): zero hardware
+// fingerprinting or device-hash tracking - id is a high-entropy,
+// server-generated opaque lookup token (crypto.randomBytes-derived,
+// never derived from any client-supplied device signal), carried by
+// the client purely as an httpOnly cookie value. device_label is a
+// human-supplied/derived display string only ("Chrome on Windows"),
+// never a persistent cross-site identifier. expires_at enforces an
+// absolute 30-day ceiling matching mfa_frequency's '30_days' option -
+// a device is never trusted indefinitely.
+export const trustedDevices = pgTable(
+  "trusted_devices",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userSecurity.userId, { onDelete: "cascade" }),
+    deviceLabel: text("device_label").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("trusted_devices_userId_idx").on(table.userId)],
+);
+
+export const trustedDevicesRelations = relations(trustedDevices, ({ one }) => ({
+  userSecurity: one(userSecurity, {
+    fields: [trustedDevices.userId],
+    references: [userSecurity.userId],
+  }),
+}));
+
+// UK GDPR Article 32 accountability trail for security-relevant
+// changes to a user's own MFA configuration (enrolment, factor
+// changes, deletion cascade). performed_by is usually the same as
+// user_id (self-service) but stays a separate column so a future
+// admin-initiated action (not built in this slice) has somewhere to
+// record a different actor without a schema change. Deliberately not
+// foreign-keyed to user.id/user_security.userId with onDelete cascade
+// - the audit trail for a deleted account's own deletion event must
+// survive that account's own row being removed, or the log of the
+// deletion would itself vanish with the thing it is recording.
+export const authAuditLogs = pgTable(
+  "auth_audit_logs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    action: text("action").notNull(),
+    performedBy: text("performed_by").notNull(),
+    timestamp: timestamp("timestamp", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("auth_audit_logs_userId_idx").on(table.userId)],
+);
 
 // log_entries (the engineering-log table from ADR-0011) is deliberately
 // NOT defined here right now. Its real consumer - a role-gated

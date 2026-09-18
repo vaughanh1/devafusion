@@ -25,6 +25,8 @@ export class DrizzleUserSecurityRepository implements UserSecurityRepository {
     return row
       ? {
           userId: row.userId,
+          requiredFactors: row.requiredFactors,
+          mfaFrequency: row.mfaFrequency,
           twoFactorSecret: row.twoFactorSecret,
           twoFactorEnabled: row.twoFactorEnabled,
         }
@@ -33,15 +35,22 @@ export class DrizzleUserSecurityRepository implements UserSecurityRepository {
 
   async upsertTwoFactorSecret(
     userId: string,
-    encryptedSecret: string,
+    plaintextSecret: string,
   ): Promise<void> {
     await this.db
       .insert(userSecurity)
-      .values({ userId, twoFactorSecret: encryptedSecret })
+      .values({ userId, twoFactorSecret: plaintextSecret })
       .onConflictDoUpdate({
         target: userSecurity.userId,
-        set: { twoFactorSecret: encryptedSecret, updatedAt: new Date() },
+        set: { twoFactorSecret: plaintextSecret, updatedAt: new Date() },
       });
+  }
+
+  async clearTwoFactorSecret(userId: string): Promise<void> {
+    await this.db
+      .update(userSecurity)
+      .set({ twoFactorSecret: null, updatedAt: new Date() })
+      .where(eq(userSecurity.userId, userId));
   }
 
   async setTwoFactorEnabled(userId: string, enabled: boolean): Promise<void> {
@@ -53,4 +62,31 @@ export class DrizzleUserSecurityRepository implements UserSecurityRepository {
         set: { twoFactorEnabled: enabled, updatedAt: new Date() },
       });
   }
+
+  async setRequiredFactors(
+    userId: string,
+    requiredFactors: string[],
+  ): Promise<void> {
+    await this.db
+      .insert(userSecurity)
+      .values({ userId, requiredFactors })
+      .onConflictDoUpdate({
+        target: userSecurity.userId,
+        set: { requiredFactors, updatedAt: new Date() },
+      });
+  }
+
+  async setMfaFrequency(
+    userId: string,
+    mfaFrequency: "always" | "30_days",
+  ): Promise<void> {
+    await this.db
+      .insert(userSecurity)
+      .values({ userId, mfaFrequency })
+      .onConflictDoUpdate({
+        target: userSecurity.userId,
+        set: { mfaFrequency, updatedAt: new Date() },
+      });
+  }
 }
+

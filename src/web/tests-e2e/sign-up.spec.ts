@@ -14,16 +14,16 @@ import { expect, test } from "@playwright/test";
 // the two.
 //
 // The successful-sign-up test genuinely writes a user row via
-// auth.api.signUpEmail -> Drizzle -> DATABASE_URL, and
-// pipelines/ci/web.yml's E2ETests job does not wire up a PostgreSQL
-// sandbox for that connection to reach (confirmed by reading the
-// pipeline directly - only TEST_DB_ACTIONS/TEST_MFA_FLOWS env vars are
-// passed through, no Docker Postgres service). Gated behind
-// TEST_DB_ACTIONS (src/web/__tests__/AGENTS.md's documented toggle for
-// exactly this situation - "There is no PostgreSQL integration yet;
-// this flag exists so the first such suite only has to check it, not
-// invent the wiring") rather than left to fail CI outright. The
-// password-toggle test below needs no database and always runs.
+// auth.api.signUpEmail -> Drizzle -> DATABASE_URL.
+// pipelines/ci/web.yml's E2ETests job wires up a real postgres
+// service container (same resources.containers: postgres the
+// LighthouseCI job also uses) and migrates it before Playwright
+// starts, so this connection has somewhere real to reach when run
+// there. Gated behind TEST_DB_ACTIONS (src/web/__tests__/AGENTS.md's
+// documented toggle, enabled from the "Run Pipeline" variables panel)
+// so this suite defaults to off and never writes real rows on an
+// ordinary PR run. The password-toggle test below needs no database
+// and always runs.
 const shouldRunDbTests = process.env.TEST_DB_ACTIONS === "true";
 
 test.describe("sign-up", () => {

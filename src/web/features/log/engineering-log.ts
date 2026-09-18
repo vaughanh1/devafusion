@@ -39,6 +39,13 @@ import { entry as turnstileFirstUseAndUxPolish } from "./entries/turnstile-first
 import { entry as a11yLighthouseAudits } from "./entries/a11y-lighthouse-audits";
 import { entry as lighthouseHtmlReportTabs } from "./entries/lighthouse-html-report-tabs";
 import { entry as lighthouseCiFindingsTriage } from "./entries/lighthouse-ci-findings-triage";
+import { entry as selfHostedMfaMatrix } from "./entries/self-hosted-mfa-matrix";
+import { entry as mfaMatrixFrontendAndAccessibility } from "./entries/mfa-matrix-frontend-and-accessibility";
+import { entry as mfaEmailSenderAndCopyFixes } from "./entries/mfa-email-sender-and-copy-fixes";
+import { entry as mfaRouteAndCryptoTestCoverage } from "./entries/mfa-route-and-crypto-test-coverage";
+import { entry as mfaE2eVerificationAndDnsHardening } from "./entries/mfa-e2e-verification-and-dns-hardening";
+import { entry as mfaCiSandboxAndDeletionHandlerCoverage } from "./entries/mfa-ci-sandbox-and-deletion-handler-coverage";
+import { entry as ciFmtCheckDirectoryMismatch } from "./entries/ci-fmt-check-directory-mismatch";
 
 export type { LogEntry } from "./types";
 
@@ -88,6 +95,13 @@ const allEntries = [
   a11yLighthouseAudits,
   lighthouseHtmlReportTabs,
   lighthouseCiFindingsTriage,
+  selfHostedMfaMatrix,
+  mfaMatrixFrontendAndAccessibility,
+  mfaEmailSenderAndCopyFixes,
+  mfaRouteAndCryptoTestCoverage,
+  mfaE2eVerificationAndDnsHardening,
+  mfaCiSandboxAndDeletionHandlerCoverage,
+  ciFmtCheckDirectoryMismatch,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

@@ -249,6 +249,15 @@ stages:
       - job: E2ETests
         displayName: Playwright end-to-end tests
         dependsOn: []
+        # Real Postgres reachable via localhost:5432 (noncontainer job -
+        # same resources.containers: postgres service the LighthouseCI
+        # job below already uses) - this is what lets TEST_DB_ACTIONS
+        # and TEST_MFA_FLOWS actually run in CI instead of only ever
+        # being exercised by a human manually setting them locally.
+        # sign-up.spec.ts and mfa-flow.spec.ts both write real rows via
+        # auth.api.signUpEmail -> Drizzle -> DATABASE_URL.
+        services:
+          postgres: postgres
 
         steps:
           - checkout: self
@@ -306,6 +315,34 @@ stages:
               # GA4 traffic should ever originate from a CI-run
               # Playwright suite.
 
+          # Same citext gap the LighthouseCI job below already found on
+          # a fresh postgres:16 container - the "email" column's citext
+          # type in 0000_better_auth_identity_and_mfa.sql needs the
+          # extension created before drizzle-kit migrate runs.
+          # Idempotent (IF NOT EXISTS), safe to run every time.
+          - script: |
+              set -euo pipefail
+
+              cd "$(webWorkingDirectory)"
+
+              cat > ./ensure-citext.mjs <<'EOF'
+              import pg from "pg";
+              const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+              try {
+                await client.connect();
+                await client.query("CREATE EXTENSION IF NOT EXISTS citext;");
+              } finally {
+                await client.end();
+              }
+              EOF
+              node ./ensure-citext.mjs
+              rm ./ensure-citext.mjs
+
+              npm run db:migrate
+            displayName: Migrate E2E fixture Postgres
+            env:
+              DATABASE_URL: "postgresql://postgres:lighthouse-ci-local@localhost:5432/postgres"
+
           - script: |
               set -euo pipefail
 
@@ -323,6 +360,34 @@ stages:
               PLAYWRIGHT_BROWSER_TARGET: $(PLAYWRIGHT_BROWSER_TARGET)
               TEST_DB_ACTIONS: $(TEST_DB_ACTIONS)
               TEST_MFA_FLOWS: $(TEST_MFA_FLOWS)
+              # Real fixture Postgres migrated above - both
+              # sign-up.spec.ts and mfa-flow.spec.ts write real rows
+              # through auth.ts's drizzleAdapter when their respective
+              # TEST_* flag is enabled from the "Run Pipeline" panel.
+              DATABASE_URL: "postgresql://postgres:lighthouse-ci-local@localhost:5432/postgres"
+              # better-auth throws BetterAuthError without this
+              # (create-context.mjs's validateSecret) - same throwaway
+              # fixture rationale as the LighthouseCI job's identical
+              # env var below, only ever used against this ephemeral
+              # CI-local Postgres container.
+              BETTER_AUTH_SECRET: "e2e-ci-fixture-better-auth-secret-value-32chars"
+              BETTER_AUTH_URL: "http://127.0.0.1:3000"
+              # encrypted-column-cipher.ts's loadKey() requires exactly
+              # 32 raw bytes once base64-decoded - exercised for real
+              # here (unlike the LighthouseCI job's identical-shaped
+              # fixture, since mfa-flow.spec.ts's TOTP enrolment
+              # genuinely writes an encrypted twoFactorSecret through
+              # this key when TEST_MFA_FLOWS=true).
+              MFA_ENCRYPTION_KEY: "ZTJlLWNpLWZpeHR1cmUtbWZhLWtleS0zMi1ieXRlcyE="
+              # Cloudflare's own documented dummy "always passes"
+              # secret key (same pair as playwright.config.ts's
+              # webServer.env) - auth.ts's captcha plugin reads this
+              # at module load via a non-null assertion.
+              TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA"
+              # form-timing-token.ts's HMAC key has no equivalent
+              # published test fixture, same rationale as
+              # playwright.config.ts's webServer.env.
+              FORM_TIMING_TOKEN_SECRET: "e2e-ci-fixture-form-timing-key-not-a-real-secret"
 
           - task: PublishTestResults@2
             displayName: Publish Playwright results

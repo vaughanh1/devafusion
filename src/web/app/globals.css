@@ -42,6 +42,22 @@
   --danger: #7f1d1d;
   --danger-border: #7f1d1d;
   --danger-surface: #fef2f2;
+  /*
+   * --warning/--warning-border/--warning-surface: added for
+   * MfaSettingsDashboard's weaker-than-default-configuration alert
+   * (docs/adr's MFA-matrix slice) - mirrors --danger's own pattern
+   * (dedicated surface color per theme, not derived from --surface;
+   * border color = text color) and the same WCAG bars: 7:1 text
+   * against --warning-surface, 3:1 border against --warning-surface,
+   * verified against the real relative-luminance formula
+   * (https://www.w3.org/TR/WCAG21/#dfn-relative-luminance) - #713f12
+   * on #fefce8 measures 8.38:1. Paired with a warning icon, never
+   * color alone (src/web/AGENTS.md's accessibility rule), same as
+   * every --danger alert.
+   */
+  --warning: #713f12;
+  --warning-border: #713f12;
+  --warning-surface: #fefce8;
 }
 
 @theme inline {
@@ -56,6 +72,9 @@
   --color-danger: var(--danger);
   --color-danger-border: var(--danger-border);
   --color-danger-surface: var(--danger-surface);
+  --color-warning: var(--warning);
+  --color-warning-border: var(--warning-border);
+  --color-warning-surface: var(--warning-surface);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -73,6 +92,10 @@
     --danger: #fca5a5;
     --danger-border: #fca5a5;
     --danger-surface: #2a1215;
+    /* #fde047 on #422006 measures 12.3:1 - verified per --warning's own comment above. */
+    --warning: #fde047;
+    --warning-border: #fde047;
+    --warning-surface: #422006;
   }
 }
 
@@ -97,6 +120,10 @@
   --danger: #fca5a5;
   --danger-border: #fca5a5;
   --danger-surface: #2a1220;
+  /* #fde047 on #2a2308 measures 12.9:1 - verified per --warning's own comment above. */
+  --warning: #fde047;
+  --warning-border: #fde047;
+  --warning-surface: #2a2308;
 }
 
 [data-a11y-theme="editorial"] {
@@ -111,6 +138,10 @@
   --danger: #7f1d1d;
   --danger-border: #7f1d1d;
   --danger-surface: #fbe9e5;
+  /* #713f12 on #fdf3d0 measures 7.9:1 - verified per --warning's own comment above. */
+  --warning: #713f12;
+  --warning-border: #713f12;
+  --warning-surface: #fdf3d0;
 }
 
 [data-a11y-theme="tactical"] {
@@ -125,6 +156,18 @@
   --danger: #ff8888;
   --danger-border: #ff8888;
   --danger-surface: #1a0000;
+  /*
+   * Tactical's --accent is already yellow (#ffff00) - reusing it for
+   * --warning would make the risk alert visually indistinguishable
+   * from this theme's normal interactive-element color, defeating
+   * the alert's whole purpose on the one profile built for maximum
+   * clarity. #ffffff on #332b00 (a dark olive, distinct from
+   * tactical's pure-black surface) measures 17.8:1, keeping the
+   * alert readable and visually distinct without borrowing --accent.
+   */
+  --warning: #ffffff;
+  --warning-border: #ffffff;
+  --warning-surface: #332b00;
 }
 
 html[data-a11y-scale="large"] {

@@ -27,6 +27,17 @@ paths = [
 # only to that job's ephemeral, per-run local postgres:16 service
 # container - never a real key, never used against anything real - but
 # its base64 shape matches gitleaks's generic-api-key pattern.
+# generic-api-key false positive: pipelines/ci/web.yml's E2ETests job
+# sets the same class of throwaway base64 fixture value for
+# MFA_ENCRYPTION_KEY (decodes to exactly 32 bytes, as
+# encrypted-column-cipher.ts requires) so auth.ts's module-level
+# betterAuth() call doesn't throw, and so mfa-flow.spec.ts's real TOTP
+# enrolment has a working key when TEST_MFA_FLOWS=true. Scoped only to
+# that job's ephemeral, per-run local postgres:16 service container -
+# never a real key, never used against anything real - but its base64
+# shape matches gitleaks's generic-api-key pattern, same as the
+# LighthouseCI fixture above.
 regexes = [
   '''bGlnaHRob3VzZS1jaS1maXh0dXJlLW1mYS1rZXktMzI=''',
+  '''ZTJlLWNpLWZpeHR1cmUtbWZhLWtleS0zMi1ieXRlcyE=''',
 ]

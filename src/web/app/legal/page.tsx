@@ -133,6 +133,55 @@ export default function LegalPage() {
 
         <div>
           <h2 className="text-xl font-semibold text-foreground">
+            Multi-factor authentication (MFA)
+          </h2>
+          <p className="mt-2">
+            If you enable a second sign-in factor (an authenticator app or
+            an emailed code), we store an encrypted copy of the
+            authenticator app secret, a hashed copy of any backup codes
+            you generate, and which factors your account requires. Our
+            lawful basis for this processing is our legitimate interest
+            in the security of the account service (UK GDPR Article
+            6(1)(f)) and, where applicable, our legal obligation to
+            protect personal data (Article 6(1)(c)). We keep this data
+            for as long as your account exists, or until you turn the
+            feature off, whichever is sooner.
+          </p>
+          <p className="mt-2">
+            If you choose to receive a code by email, we use{" "}
+            <a
+              href="https://learn.microsoft.com/en-us/azure/communication-services/concepts/privacy"
+              rel="noreferrer"
+              target="_blank"
+              className="underline hover:text-foreground"
+            >
+              Azure Communication Services
+            </a>{" "}
+            (Microsoft) to send it, hosted in the UK. We chose this
+            provider specifically because it lets us keep this data
+            within the UK, rather than a provider that would move it
+            outside the UK. The email contains only a one-time code and
+            expires after three minutes; it is not used for marketing or
+            tracking.
+          </p>
+          <p className="mt-2">
+            If you choose to trust a device for 30 days, we set an
+            additional strictly necessary cookie containing a random
+            token - not a hardware fingerprint or any identifying
+            information about your device - so we can recognise that
+            browser without asking for a second factor again during that
+            window. This is exempt from active consent under PECR (it is
+            required to provide the security feature you asked for), but
+            we disclose it here regardless. In-progress sign-in attempts
+            (which factor you have completed so far) are held in server
+            memory for at most three minutes and are never written to a
+            database, per the data minimisation principle (UK GDPR
+            Article 5(1)(c)).
+          </p>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">
             Accessibility theme preference
           </h2>
           <p className="mt-2">
@@ -155,12 +204,14 @@ export default function LegalPage() {
           </h2>
           <p className="mt-2">
             This site does not sell or share your data with third parties
-            beyond Google Analytics and Cloudflare Turnstile (both
-            described above), does not run advertising, and does not use
-            any tracking cookies other than the analytics cookies
-            described above. The accessibility preference and session
-            cookies described above store only your chosen theme, text
-            size, or session token, and are not used for tracking.
+            beyond Google Analytics, Cloudflare Turnstile, and (if you
+            enable email-based MFA) Azure Communication Services, all
+            described above. It does not run advertising and does not
+            use any tracking cookies other than the analytics cookies
+            described above. The accessibility preference, session, and
+            trusted-device cookies described above store only your
+            chosen theme, text size, session token, or MFA trust status,
+            and are not used for tracking.
           </p>
         </div>
 

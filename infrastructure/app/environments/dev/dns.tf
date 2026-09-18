@@ -114,6 +114,95 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
   }
 }
 
+# ADR-0015 addendum: Azure Communication Services Email's custom-
+# domain verification for devafusion.net (donotreply@devafusion.net,
+# module.email) - each record's type/name/value comes straight from
+# Azure's own verification_records output, computed once
+# azurerm_email_communication_service_domain exists; nothing here is
+# guessed or hand-copied from the Portal. Domain ownership TXT and
+# SPF/DKIM/DKIM2 verify automatically once these are live in DNS
+# (Microsoft's own documented 15-30 minute propagation window, no
+# manual "click verify" step). This is entirely independent of
+# devafusion.com's separate Microsoft 365 DKIM/DMARC records above -
+# different domain, different mail system (M365 mailboxes vs. this
+# app's own transactional MFA sender).
+#
+# azurerm's own verification_records[*].name may come back either
+# fully-qualified (with or without a trailing dot) or already
+# relative to the zone - Terraform's trimsuffix() is documented to be
+# a no-op (returns the input unchanged) whenever the given suffix
+# isn't present at the end of the string, so trimming all three
+# possible fully-qualified suffix forms in sequence below is safe
+# regardless of which form Azure actually returns: an already-
+# relative name simply passes through every trimsuffix() unchanged,
+# since none of the three suffixes will match it.
+locals {
+  acs_domain_suffixes = [
+    ".${local.primary_domain}.", # fully-qualified with trailing dot
+    ".${local.primary_domain}",  # fully-qualified without trailing dot
+    local.primary_domain,        # bare domain with no leading dot (unlikely, covered for safety)
+  ]
+}
+
+resource "azurerm_dns_txt_record" "devafusion_net_acs_domain_verification" {
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].domain[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].domain[0].ttl
+
+  record {
+    value = module.email.verification_records[0].domain[0].value
+  }
+}
+
+resource "azurerm_dns_txt_record" "devafusion_net_acs_spf" {
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].spf[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].spf[0].ttl
+
+  record {
+    value = module.email.verification_records[0].spf[0].value
+  }
+}
+
+resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim" {
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].dkim[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].dkim[0].ttl
+
+  record = module.email.verification_records[0].dkim[0].value
+}
+
+resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim2" {
+  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].dkim2[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = module.email.verification_records[0].dkim2[0].ttl
+
+  record = module.email.verification_records[0].dkim2[0].value
+}
+
+# DMARC is deliberately NOT sourced from verification_records.dmarc -
+# Azure's own default DMARC record uses p=none (monitor-only), and
+# this zone already has an established DMARC policy pattern for
+# devafusion.com (p=none, see that record's own comment) that this
+# mirrors for consistency; the actual record value is a literal
+# matching that same pattern, not Azure-computed, since ACS's
+# verification does not require a specific DMARC policy stringency,
+# only that a record exists at _dmarc.
+resource "azurerm_dns_txt_record" "devafusion_net_dmarc" {
+  name                = "_dmarc"
+  zone_name           = azurerm_dns_zone.devafusion_net.name
+  resource_group_name = azurerm_resource_group.app.name
+  ttl                 = 3600
+
+  record {
+    value = "v=DMARC1; p=none; rua=mailto:dmarc@devafusion.net"
+  }
+}
+
 resource "azurerm_dns_txt_record" "devafusion_net_atproto" {
   name                = "_atproto"
   zone_name           = azurerm_dns_zone.devafusion_net.name
