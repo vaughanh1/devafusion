@@ -1,3 +1,20 @@
+# azapi_update_resource.donotreply_display_name below requires the
+# azapi provider - declared explicitly here (this module has no
+# providers.tf of its own) because a module without its own
+# required_providers block for a given provider resolves that
+# provider's source ambiguously rather than inheriting the root's
+# Azure/azapi choice (confirmed directly: terraform init resolved
+# hashicorp/azapi, a different, non-existent publisher, instead of
+# the root providers.tf's Azure/azapi, and failed with "does not have
+# a provider named registry.terraform.io/hashicorp/azapi").
+terraform {
+  required_providers {
+    azapi = {
+      source = "Azure/azapi"
+    }
+  }
+}
+
 # ADR-0015: Azure Communication Services Email for the MFA email-OTP
 # factor (features/auth/mfa/send-email-otp.ts) - replaces an earlier
 # Resend-based design rejected on UK GDPR data-sovereignty grounds:
@@ -64,18 +81,53 @@ resource "azurerm_communication_service_email_domain_association" "this" {
 }
 
 # Gives the sender a real, friendly "From" display name ("Devafusion")
-# rather than a bare address - confirmed this resource genuinely
-# exists in the azurerm provider (an earlier claim that it didn't was
-# wrong and is corrected here, verified directly against the
-# provider's own registry docs). name is the MailFrom local-part
+# rather than a bare address. name is the MailFrom local-part
 # ("donotreply", matching the domain's own default local-part rather
 # than introducing a second address to verify) - display_name is set
-# once here, at the resource level, not per-send in the SDK; the SDK
-# call in send-email-otp.ts still only passes the plain address
-# string, and Azure attaches this display name automatically based on
-# which verified sender address is used.
-resource "azurerm_email_communication_service_domain_sender_username" "donotreply" {
-  name                    = "donotreply"
-  email_service_domain_id = azurerm_email_communication_service_domain.this.id
-  display_name            = "Devafusion"
+# once here, not per-send in the SDK; the SDK call in
+# send-email-otp.ts still only passes the plain address string, and
+# Azure attaches this display name automatically based on which
+# verified sender address is used.
+#
+# Deliberately azapi_update_resource, NOT the azurerm_email_
+# communication_service_domain_sender_username resource (which does
+# genuinely exist in the azurerm provider - an earlier claim that it
+# didn't was wrong). Confirmed directly against Microsoft's own docs
+# (Add custom verified email domains): Azure auto-provisions a
+# default "DoNotReply" sender username the moment a CustomerManaged
+# domain exists - this is NOT a resource Terraform ever "creates"
+# from a blank slate, it always already exists in Azure by the time
+# this resource block runs, on every environment, every time,
+# including its very first apply. A plain resource block therefore
+# always fails with "a resource with this ID already exists"
+# (confirmed directly in a real failed apply run). A native Terraform
+# import block was tried next, but that requires its id argument to
+# be known at plan time (confirmed directly against a real Terraform
+# GitHub issue: "the import block \"id\" argument depends on resource
+# attributes that cannot be determined until apply" is a real error)
+# - azurerm_email_communication_service_domain.this.id is NOT known
+# at plan time on a genuinely fresh environment's first apply, so
+# that import block would have broken exactly the case it was meant
+# to fix. azapi_update_resource never creates or checks existence at
+# all - it only ever issues a PATCH against resource_id, which is
+# free to be unknown at plan time like any other resource attribute,
+# and its delete is a no-op that leaves the underlying Azure resource
+# untouched (confirmed directly against the azapi provider's own
+# docs) - exactly matching the reality that Terraform doesn't own
+# this resource's create/delete lifecycle, only the display_name
+# field on top of what Azure already auto-provisions. This also means
+# manually deleting the sender username in the Portal is harmless:
+# Azure simply re-auto-provisions the default DoNotReply the next
+# time the domain is touched, and this resource's next apply patches
+# display_name back onto it.
+resource "azapi_update_resource" "donotreply_display_name" {
+  type        = "Microsoft.Communication/emailServices/domains/senderUsernames@2023-04-01"
+  resource_id = "${azurerm_email_communication_service_domain.this.id}/senderUsernames/donotreply"
+
+  body = {
+    properties = {
+      username    = "donotreply"
+      displayName = "Devafusion"
+    }
+  }
 }
