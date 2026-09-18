@@ -48,6 +48,7 @@ import { entry as mfaCiSandboxAndDeletionHandlerCoverage } from "./entries/mfa-c
 import { entry as ciFmtCheckDirectoryMismatch } from "./entries/ci-fmt-check-directory-mismatch";
 import { entry as cspDevModeUnsafeEval } from "./entries/csp-dev-mode-unsafe-eval";
 import { entry as acsDnsRootApexAndSenderImport } from "./entries/acs-dns-root-apex-and-sender-import";
+import { entry as autoLocalPostgresOnDev } from "./entries/auto-local-postgres-on-dev";
 
 export type { LogEntry } from "./types";
 
@@ -106,6 +107,7 @@ const allEntries = [
   ciFmtCheckDirectoryMismatch,
   cspDevModeUnsafeEval,
   acsDnsRootApexAndSenderImport,
+  autoLocalPostgresOnDev,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

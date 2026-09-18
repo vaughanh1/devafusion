@@ -36,6 +36,7 @@ to this application.
 
 ## Local Postgres for Migration Testing
 
+- **Day-to-day `npm run dev` needs no manual setup** — its `predev` script (`scripts/ensure-local-postgres.mjs`) starts/reuses a persistent `devafusion-dev-local` Docker container matching `.env.example`'s `DATABASE_URL`, enables `citext`, and runs `npm run db:migrate` automatically every time. The workflow below is a separate, deliberate clean-slate check specifically for verifying a *new* migration file before pushing it — starting from a genuinely empty database, not the persistent dev one, which may already have old migrations applied from previous sessions.
 - **`drizzle-kit migrate` has no local target by default** — the only real Postgres this project has is the firewalled Azure Flexible Server, and PGlite (used inside Vitest, `features/log/__tests__/`) is a WASM reimplementation, not the literal engine that will run a migration in production. Never treat a PGlite-only pass as proof a migration is safe to ship.
 - **Before pushing any change under `src/web/drizzle/**`, run the migration locally against real Docker Postgres, pinned to the same major version as the live server** (`postgres_version = "16"` in `infrastructure/app/modules/postgresql/variables.tf` — check that file if it ever changes, don't assume 16):
   ```

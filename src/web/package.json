@@ -9,6 +9,7 @@
     "safari 16.4"
   ],
   "scripts": {
+    "predev": "node scripts/ensure-local-postgres.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "node .next/standalone/server.js",
