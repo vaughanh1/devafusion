@@ -129,7 +129,8 @@ DevOps "Run Pipeline" variables panel without a commit to `develop`:
   download and commit that instead of a locally-rendered substitute.
 - **Accessibility audits (`@a11y` tag)** — `accessibility.spec.ts` runs
   `@axe-core/playwright` against every audited route and asserts zero
-  WCAG 2.1 AA violations. Unlike `@visual`, this needs no Docker
+  WCAG 2.2 AA violations (2.2 is a strict superset of 2.0/2.1, so the
+  older tags stay in scope alongside `wcag22aa`). Unlike `@visual`, this needs no Docker
   pinning (axe-core's ruleset does not depend on font rendering) and
   runs in the default `chromium` project on the bare hosted agent, as
   part of `pipelines/ci/web.yml`'s `E2ETests` job (no `--grep` filter
@@ -139,3 +140,23 @@ DevOps "Run Pipeline" variables panel without a commit to `develop`:
   section for the exclusion policy (a named WCAG exception only, never
   convenience) and the separate Lighthouse CI (`.lighthouserc.js`)
   gates on accessibility/best-practices/SEO/performance.
+- **`keyboard-navigation.spec.ts` (also `@a11y`)** — axe-core only
+  checks static/structural rules (an element is reachable, has a
+  visible focus indicator, isn't a negative-`tabindex` trap); it never
+  actually drives a keyboard through a real form. This spec does:
+  `page.keyboard.press("Tab")`/`.type()`/`.press("Enter")` against the
+  real sign-up/log-in/reset-password forms, asserting each field is
+  reached in a logical order (WCAG 2.1 SC 2.1.1 Keyboard, SC 2.4.3
+  Focus Order) and that Enter on the focused submit button triggers a
+  real submission. Each field walk starts from an explicit
+  `.focus()` on the field itself rather than counting Tab presses
+  from page load, so it stays uncoupled from incidental layout
+  changes (header nav, etc.) - what SC 2.4.3 actually requires is that
+  the sequence *after* a field is reached is logical. The Enter-
+  submits proof deliberately runs against `reset-password-form.tsx`
+  (no Cloudflare Turnstile dependency) rather than sign-up/log-in,
+  since Turnstile's own background round trip has been observed as
+  independently flaky in some sandboxes and that flakiness is already
+  covered by `sign-up.spec.ts`'s own Turnstile-dependent test - this
+  spec's job is proving keyboard operability, not re-proving
+  Turnstile wiring.
