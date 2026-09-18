@@ -66,6 +66,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
         value={newPassword}
         onChange={setNewPassword}
         describedBy={error ? errorId : undefined}
+        isInvalid={!!error}
       />
 
       <PasswordStrengthMeter password={newPassword} />

@@ -129,6 +129,7 @@ export function MfaChallengeForm({
           value={code}
           onChange={(event) => setCode(event.target.value)}
           aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!error}
           className="min-h-11 border border-surface-border bg-background px-3 text-base tracking-widest text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>

@@ -137,6 +137,30 @@ describe("LogInForm", () => {
     expect(notifySessionChangedMock).not.toHaveBeenCalled();
   });
 
+  // Screen-reader compliance: see sign-up-form.test.tsx's identical
+  // test and password-field.tsx's own comment on why aria-invalid is
+  // required alongside aria-describedby, not either alone.
+  it("marks both fields aria-invalid on a credential error", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(jsonResponse(401, { error: "Invalid email or password." }));
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
+
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Password", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+
+    fillAndSubmit();
+    await screen.findByRole("alert");
+
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Password", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
   it("shows a single generic message on invalid credentials", async () => {
     stubFetch();
     fetchMock.mockResolvedValue(jsonResponse(401, { error: "Invalid email or password." }));

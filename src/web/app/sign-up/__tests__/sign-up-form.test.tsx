@@ -135,6 +135,35 @@ describe("SignUpForm", () => {
     );
   });
 
+  // Screen-reader compliance: aria-describedby alone links a field to
+  // the error text, but a screen reader only announces "invalid
+  // entry" when aria-invalid is also set - see password-field.tsx's
+  // own comment on why both are required, not one or the other.
+  it("marks every field aria-invalid when the server returns an error, and clears it once resolved", async () => {
+    signUpEmailMock.mockResolvedValue({
+      data: null,
+      error: { message: "Email already in use." },
+    });
+    render(<SignUpForm redirectPath="/" formTimingToken="test-token" />);
+
+    expect(screen.getByLabelText("Name")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Password", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+
+    fillAndSubmit();
+    await screen.findByRole("alert");
+
+    expect(screen.getByLabelText("Name")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Password", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+  });
+
   it("shows the server-provided error message and does not redirect", async () => {
     signUpEmailMock.mockResolvedValue({
       data: null,

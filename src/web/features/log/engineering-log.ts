@@ -51,6 +51,7 @@ import { entry as acsDnsRootApexAndSenderImport } from "./entries/acs-dns-root-a
 import { entry as autoLocalPostgresOnDev } from "./entries/auto-local-postgres-on-dev";
 import { entry as mfaTrustedDevicesIssuerAndReenrol } from "./entries/mfa-trusted-devices-issuer-and-reenrol";
 import { entry as enforceEmailVerification } from "./entries/enforce-email-verification";
+import { entry as formErrorAriaInvalid } from "./entries/form-error-aria-invalid";
 
 export type { LogEntry } from "./types";
 
@@ -112,6 +113,7 @@ const allEntries = [
   autoLocalPostgresOnDev,
   mfaTrustedDevicesIssuerAndReenrol,
   enforceEmailVerification,
+  formErrorAriaInvalid,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

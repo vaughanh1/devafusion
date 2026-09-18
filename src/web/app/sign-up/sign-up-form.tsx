@@ -141,6 +141,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
           value={name}
           onChange={(event) => setName(event.target.value)}
           aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!error}
           className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
@@ -158,6 +159,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!error}
           className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
@@ -172,6 +174,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
         value={password}
         onChange={setPassword}
         describedBy={error ? errorId : undefined}
+        isInvalid={!!error}
       />
 
       <PasswordStrengthMeter password={password} />

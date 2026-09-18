@@ -14,6 +14,18 @@ type PasswordFieldProps = {
   minLength?: number;
   required?: boolean;
   describedBy?: string;
+  // Screen-reader form-error requirement: aria-describedby alone
+  // links the field to the error text, but does not itself flag the
+  // field as invalid in the accessibility tree - a screen reader
+  // only reads the description if the user happens to navigate onto
+  // it. aria-invalid is what actually announces "invalid entry" when
+  // the field receives focus. Callers pass this as !!error (a
+  // boolean, not the error object) so the DOM attribute is always
+  // exactly "true" or "false", never absent - explicit false is
+  // correct here, unlike describedBy's undefined-when-clean pattern,
+  // because aria-invalid has no equivalent "absent means valid"
+  // convention screen readers can rely on.
+  isInvalid?: boolean;
 };
 
 // Shared across SignUpForm, LogInForm and ResetPasswordForm rather
@@ -32,6 +44,7 @@ export function PasswordField({
   minLength,
   required,
   describedBy,
+  isInvalid,
 }: PasswordFieldProps) {
   const [isRevealed, setIsRevealed] = useState(false);
   const toggleId = useId();
@@ -52,6 +65,7 @@ export function PasswordField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-describedby={describedBy}
+          aria-invalid={!!isInvalid}
           // ADR-0014: passwordrules only makes sense for a NEW
           // password field - it tells the browser's generator what
           // to produce, which is meaningless (and would be

@@ -74,6 +74,7 @@ export function DeleteAccountForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!error}
           className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
@@ -92,6 +93,7 @@ export function DeleteAccountForm() {
           value={confirmation}
           onChange={(event) => setConfirmation(event.target.value)}
           aria-describedby={error ? errorId : undefined}
+          aria-invalid={!!error}
           className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
