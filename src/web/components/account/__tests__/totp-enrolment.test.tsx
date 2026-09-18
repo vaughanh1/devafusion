@@ -109,14 +109,50 @@ describe("TotpEnrolment", () => {
   it("shows an error when starting enrolment fails", async () => {
     stubFetch();
     fetchMock.mockResolvedValue(
-      jsonResponse(409, { error: "Two-factor authentication is already enabled for this account." }),
+      jsonResponse(500, { error: "Internal server error" }),
     );
     render(<TotpEnrolment />);
 
     fireEvent.click(screen.getByRole("button", { name: /set up authenticator app/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Two-factor authentication is already enabled for this account.",
+      "Internal server error",
+    );
+  });
+
+  it("prompts for the current password when the account already has a confirmed factor, then re-enrols", async () => {
+    stubFetch();
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse(400, {
+          error:
+            "Your current password is required to reset an existing authenticator app.",
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          qrCodeDataUri: "data:image/png;base64,abc123",
+          manualEntrySecret: "JBSWY3DPEHPK3PXP",
+          backupCodes: ["AAAA1111BBBB"],
+        }),
+      );
+    render(<TotpEnrolment />);
+
+    fireEvent.click(screen.getByRole("button", { name: /set up authenticator app/i }));
+
+    const passwordField = await screen.findByLabelText(/current password/i);
+    fireEvent.change(passwordField, { target: { value: "correct-horse-battery" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: /confirm and replace authenticator app/i }),
+    );
+
+    await screen.findByRole("img");
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/auth/two-factor/enrol",
+      expect.objectContaining({
+        body: JSON.stringify({ password: "correct-horse-battery" }),
+      }),
     );
   });
 

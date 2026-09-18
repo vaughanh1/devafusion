@@ -49,6 +49,7 @@ import { entry as ciFmtCheckDirectoryMismatch } from "./entries/ci-fmt-check-dir
 import { entry as cspDevModeUnsafeEval } from "./entries/csp-dev-mode-unsafe-eval";
 import { entry as acsDnsRootApexAndSenderImport } from "./entries/acs-dns-root-apex-and-sender-import";
 import { entry as autoLocalPostgresOnDev } from "./entries/auto-local-postgres-on-dev";
+import { entry as mfaTrustedDevicesIssuerAndReenrol } from "./entries/mfa-trusted-devices-issuer-and-reenrol";
 
 export type { LogEntry } from "./types";
 
@@ -108,6 +109,7 @@ const allEntries = [
   cspDevModeUnsafeEval,
   acsDnsRootApexAndSenderImport,
   autoLocalPostgresOnDev,
+  mfaTrustedDevicesIssuerAndReenrol,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

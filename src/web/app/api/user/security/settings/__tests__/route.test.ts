@@ -9,6 +9,7 @@ const {
   setTwoFactorEnabledMock,
   clearTwoFactorSecretMock,
   recordAuthAuditLogMock,
+  trustedDevicesCreateMock,
 } = vi.hoisted(() => ({
   consumeRateLimitMock: vi.fn(),
   getSessionMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   setTwoFactorEnabledMock: vi.fn(),
   clearTwoFactorSecretMock: vi.fn(),
   recordAuthAuditLogMock: vi.fn(),
+  trustedDevicesCreateMock: vi.fn(),
 }));
 
 vi.mock("@/features/auth/rate-limit", () => ({
@@ -50,6 +52,12 @@ vi.mock("@/features/auth/mfa/auth-audit-log", () => ({
   recordAuthAuditLog: recordAuthAuditLogMock,
 }));
 
+vi.mock("@/features/auth/mfa/drizzle-trusted-devices-repository", () => ({
+  DrizzleTrustedDevicesRepository: class {
+    create = trustedDevicesCreateMock;
+  },
+}));
+
 import { POST } from "@/app/api/user/security/settings/route";
 
 function buildRequest(body: Record<string, unknown>) {
@@ -76,6 +84,7 @@ describe("POST /api/user/security/settings", () => {
     setTwoFactorEnabledMock.mockReset();
     clearTwoFactorSecretMock.mockReset();
     recordAuthAuditLogMock.mockReset();
+    trustedDevicesCreateMock.mockReset();
   });
 
   it("returns 429 when the rate limit is exceeded", async () => {
@@ -172,6 +181,34 @@ describe("POST /api/user/security/settings", () => {
 
     expect(setTwoFactorEnabledMock).not.toHaveBeenCalled();
     expect(clearTwoFactorSecretMock).not.toHaveBeenCalled();
+  });
+
+  it("trusts the current device and sets the trusted-device cookie when mfaFrequency is '30_days'", async () => {
+    consumeRateLimitMock.mockResolvedValue({ allowed: true });
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    verifyPasswordMock.mockResolvedValue({ status: true });
+
+    const response = await POST(
+      buildRequest({ ...validBody, mfaFrequency: "30_days" }),
+    );
+
+    expect(trustedDevicesCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "u1" }),
+    );
+    expect(response.headers.get("set-cookie")).toContain(
+      "devafusion-trusted-device=",
+    );
+  });
+
+  it("does not trust the current device when mfaFrequency is 'always'", async () => {
+    consumeRateLimitMock.mockResolvedValue({ allowed: true });
+    getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    verifyPasswordMock.mockResolvedValue({ status: true });
+
+    const response = await POST(buildRequest(validBody));
+
+    expect(trustedDevicesCreateMock).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("returns 500 when an unexpected error is thrown", async () => {

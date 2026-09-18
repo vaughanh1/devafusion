@@ -7,6 +7,12 @@ import { FormError } from "@/components/auth/form-error";
 
 type EnrolmentStep =
   | { stage: "idle" }
+  // Surfaced when /api/auth/two-factor/enrol reports this account
+  // already has a confirmed TOTP factor and needs the current
+  // password re-confirmed before replacing it - e.g. recovering from
+  // a lost/reset authenticator device, not this component's first
+  // run.
+  | { stage: "needs-password" }
   | {
       stage: "scanning";
       qrCodeDataUri: string;
@@ -26,20 +32,50 @@ type EnrolmentStep =
 export function TotpEnrolment() {
   const codeId = useId();
   const errorId = useId();
+  const reenrolPasswordId = useId();
 
   const [step, setStep] = useState<EnrolmentStep>({ stage: "idle" });
   const [confirmCode, setConfirmCode] = useState("");
+  const [reenrolPassword, setReenrolPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  async function startEnrolment() {
+  // Shared by both the first-time and re-enrolment paths - the
+  // server-side behaviour (and every response shape below) is
+  // identical either way; only whether a password is required
+  // differs, and the server itself is the one source of truth for
+  // that (this account's stored twoFactorEnabled, not any client-
+  // held state).
+  async function startEnrolment(password?: string) {
     setError(null);
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/two-factor/enrol", { method: "POST" });
+      const response = await fetch("/api/auth/two-factor/enrol", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(password ? { password } : {}),
+      });
+
       if (!response.ok) {
         const body = await response.json().catch(() => null);
+
+        // The server's 400 for "password required" is the same
+        // status a malformed request would also return - the two
+        // are told apart by the specific message this route only
+        // ever sends for that one case, not a dedicated status code,
+        // since introducing a new one just for this single caller
+        // would be a heavier change than reusing the existing 400 +
+        // message the route already returns.
+        if (
+          response.status === 400 &&
+          body?.error?.includes("current password is required")
+        ) {
+          setStep({ stage: "needs-password" });
+          setIsLoading(false);
+          return;
+        }
+
         setError(body?.error ?? "Could not start enrolment. Please try again.");
         setIsLoading(false);
         return;
@@ -91,11 +127,52 @@ export function TotpEnrolment() {
         {error && <FormError message={error} />}
         <button
           type="button"
-          onClick={startEnrolment}
+          onClick={() => startEnrolment()}
           disabled={isLoading}
           className="min-h-11 cursor-pointer self-start border border-surface-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? "Starting…" : "Set up authenticator app"}
+        </button>
+      </div>
+    );
+  }
+
+  if (step.stage === "needs-password") {
+    // A plain div, not a nested <form> - same reasoning as the
+    // confirm-code step below: this component is always mounted
+    // inside MfaSettingsDashboard's own outer <form>.
+    return (
+      <div className="flex flex-col gap-3">
+        {error && <FormError id={errorId} message={error} />}
+        <p className="text-sm text-muted">
+          You already have an authenticator app set up. Confirm your password
+          to replace it - useful if you&apos;ve lost access to the current
+          one.
+        </p>
+        <label
+          htmlFor={reenrolPasswordId}
+          className="text-sm font-medium text-foreground"
+        >
+          Current password
+        </label>
+        <input
+          id={reenrolPasswordId}
+          type="password"
+          name="reenrolPassword"
+          autoComplete="current-password"
+          required
+          value={reenrolPassword}
+          onChange={(event) => setReenrolPassword(event.target.value)}
+          aria-describedby={error ? errorId : undefined}
+          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        />
+        <button
+          type="button"
+          onClick={() => startEnrolment(reenrolPassword)}
+          disabled={isLoading || reenrolPassword.length === 0}
+          className="min-h-11 cursor-pointer self-start border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isLoading ? "Confirming…" : "Confirm and replace authenticator app"}
         </button>
       </div>
     );

@@ -9,7 +9,7 @@ import { renderTotpQrCodeDataUri } from "../totp-qr-code";
 describe("renderTotpQrCodeDataUri", () => {
   it("renders a real PNG data URI, not the bare otpauth:// string", async () => {
     const dataUri = await renderTotpQrCodeDataUri(
-      "otpauth://totp/DevAFusion:test@example.com?secret=JBSWY3DPEHPK3PXP&issuer=DevAFusion",
+      "otpauth://totp/Devafusion:test@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Devafusion",
     );
 
     expect(dataUri.startsWith("data:image/png;base64,")).toBe(true);
@@ -18,7 +18,7 @@ describe("renderTotpQrCodeDataUri", () => {
 
   it("produces a non-trivial amount of image data", async () => {
     const dataUri = await renderTotpQrCodeDataUri(
-      "otpauth://totp/DevAFusion:test@example.com?secret=JBSWY3DPEHPK3PXP&issuer=DevAFusion",
+      "otpauth://totp/Devafusion:test@example.com?secret=JBSWY3DPEHPK3PXP&issuer=Devafusion",
     );
     const base64Payload = dataUri.split(",")[1]!;
 
