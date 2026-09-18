@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 import { FormError } from "@/components/auth/form-error";
+import { notifySessionChanged } from "@/features/auth/auth-client";
 
 type FactorType = "totp" | "email" | "backup_code";
 
@@ -96,6 +97,12 @@ export function MfaChallengeForm({
         return;
       }
 
+      // Same rationale as log-in-form.tsx's identical call -
+      // two-factor/verify's own server-side release of the withheld
+      // session cookies never goes through authClient's dispatch, so
+      // authClient.useSession()'s client-side nanostore needs an
+      // explicit nudge or it keeps showing stale logged-out state.
+      notifySessionChanged();
       router.push(redirectPath);
       router.refresh();
     } catch {
