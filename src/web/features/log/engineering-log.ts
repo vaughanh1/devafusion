@@ -46,6 +46,7 @@ import { entry as mfaRouteAndCryptoTestCoverage } from "./entries/mfa-route-and-
 import { entry as mfaE2eVerificationAndDnsHardening } from "./entries/mfa-e2e-verification-and-dns-hardening";
 import { entry as mfaCiSandboxAndDeletionHandlerCoverage } from "./entries/mfa-ci-sandbox-and-deletion-handler-coverage";
 import { entry as ciFmtCheckDirectoryMismatch } from "./entries/ci-fmt-check-directory-mismatch";
+import { entry as cspDevModeUnsafeEval } from "./entries/csp-dev-mode-unsafe-eval";
 
 export type { LogEntry } from "./types";
 
@@ -102,6 +103,7 @@ const allEntries = [
   mfaE2eVerificationAndDnsHardening,
   mfaCiSandboxAndDeletionHandlerCoverage,
   ciFmtCheckDirectoryMismatch,
+  cspDevModeUnsafeEval,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

@@ -57,8 +57,16 @@ export function PasswordField({
           // to produce, which is meaningless (and would be
           // misleading) on a current-password field being used to
           // log in with an existing, already-chosen password.
+          // Lowercase "passwordrules" (not camelCase "passwordRules")
+          // - it's a non-standard HTML attribute (Safari/WebKit's own
+          // password-generation-rules feature), not a recognized
+          // React DOM prop, so React only passes it through as a
+          // custom attribute when spelled exactly as the browser
+          // expects; camelCasing it produces "React does not
+          // recognize the `passwordRules` prop on a DOM element" in
+          // the console and never reaches the DOM at all.
           {...(autoComplete === "new-password"
-            ? { passwordRules: PASSWORD_RULES_ATTRIBUTE }
+            ? { passwordrules: PASSWORD_RULES_ATTRIBUTE }
             : {})}
           className="min-h-11 w-full border border-surface-border bg-background px-3 pr-16 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
