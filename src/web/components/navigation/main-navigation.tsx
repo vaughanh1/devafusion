@@ -20,7 +20,7 @@ export function MainNavigation() {
     <nav aria-label="Main navigation" className="relative">
       <button
         type="button"
-        className="inline-flex min-h-11 cursor-pointer items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:hidden"
+        className="inline-flex min-h-[var(--touch-target-size)] cursor-pointer items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:hidden"
         aria-expanded={isOpen}
         aria-controls="main-navigation-links"
         onClick={() => setIsOpen((open) => !open)}
@@ -36,7 +36,14 @@ export function MainNavigation() {
           <li key={item.href}>
             <Link
               href={item.href}
-              className="block px-3 py-2 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:px-0 md:py-1"
+              // min-h-[var(--touch-target-size)] unconditionally, not only on the mobile
+              // md:hidden menu button - the md:py-1 override below
+              // previously left the desktop nav link's real hit
+              // height under 44px CSS pixels (text-sm line-height +
+              // 4px top/bottom padding), failing the 44x44 minimum
+              // touch-target bar this project holds every
+              // interactive control to.
+              className="flex min-h-[var(--touch-target-size)] items-center px-3 py-2 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground md:px-0"
               aria-current={pathname === item.href ? "page" : undefined}
               onClick={() => setIsOpen(false)}
             >

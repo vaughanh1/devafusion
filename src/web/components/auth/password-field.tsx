@@ -82,7 +82,7 @@ export function PasswordField({
           {...(autoComplete === "new-password"
             ? { passwordrules: PASSWORD_RULES_ATTRIBUTE }
             : {})}
-          className="min-h-11 w-full border border-surface-border bg-background px-3 pr-16 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="min-h-[var(--touch-target-size)] w-full border border-surface-border bg-background px-3 pr-16 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <button
           id={toggleId}
@@ -94,7 +94,13 @@ export function PasswordField({
           // native reveal toggle, so screen reader users hear the
           // control's current effect rather than a static label.
           aria-label={isRevealed ? "Hide password" : "Show password"}
-          className="absolute right-2 min-h-11 cursor-pointer px-2 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          // min-w-[var(--touch-target-size)] alongside min-h-[var(--touch-target-size)]: WCAG 2.2 SC 2.5.5 (Target
+          // Size, AAA) and the 44x44 CSS px minimum this project
+          // holds every interactive control to - px-2 alone gave
+          // this button a real clickable width of roughly the
+          // "Show"/"Hide" text plus 8px each side (well under 44px),
+          // even though its height already cleared the bar.
+          className="absolute right-2 flex min-h-[var(--touch-target-size)] min-w-[var(--touch-target-size)] cursor-pointer items-center justify-center px-2 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isRevealed ? "Hide" : "Show"}
         </button>

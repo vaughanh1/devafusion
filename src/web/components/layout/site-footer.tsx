@@ -12,7 +12,12 @@ export function SiteFooter() {
 
           <Link
             href="/legal"
-            className="text-sm text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            // flex + min-h-[var(--touch-target-size)]: a bare text-sm link with no vertical
+            // padding renders well under the 44px CSS-pixel touch-
+            // target minimum this project holds every interactive
+            // control to - same fix as main-navigation.tsx's desktop
+            // links.
+            className="flex min-h-[var(--touch-target-size)] items-center text-sm text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Privacy & cookies
           </Link>
@@ -21,7 +26,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           <Link
             href="/contact"
-            className="text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="flex min-h-[var(--touch-target-size)] items-center text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             Contact
           </Link>

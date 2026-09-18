@@ -25,7 +25,7 @@ export function AccountNav() {
   if (isPending) {
     // Reserves the same footprint as either rendered state so the
     // header doesn't visibly shift once the session resolves.
-    return <span className="inline-flex min-h-11 items-center px-3" />;
+    return <span className="inline-flex min-h-[var(--touch-target-size)] items-center px-3" />;
   }
 
   if (!session) {
@@ -33,7 +33,7 @@ export function AccountNav() {
     return (
       <Link
         href={`/log-in${query}`}
-        className="inline-flex min-h-11 items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        className="inline-flex min-h-[var(--touch-target-size)] items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
       >
         Log in
       </Link>
@@ -51,7 +51,7 @@ export function AccountNav() {
     <div className="flex items-center gap-2">
       <Link
         href="/account"
-        className="inline-flex min-h-11 items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        className="inline-flex min-h-[var(--touch-target-size)] items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
       >
         Account
       </Link>
@@ -59,7 +59,7 @@ export function AccountNav() {
         type="button"
         disabled={isLoggingOut}
         onClick={handleLogOut}
-        className="inline-flex min-h-11 cursor-pointer items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex min-h-[var(--touch-target-size)] cursor-pointer items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isLoggingOut ? "Logging out…" : "Log out"}
       </button>

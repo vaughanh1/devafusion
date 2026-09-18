@@ -204,16 +204,35 @@ export default function LegalPage() {
             Accessibility theme preference
           </h2>
           <p className="mt-2">
-            If you choose a colour theme or text size from the controls in
-            the site footer, that choice is saved in two strictly necessary
-            cookies (<code>devafusion-a11y-theme</code> and{" "}
-            <code>devafusion-a11y-scale</code>) so the site can apply it
+            If you choose a colour theme, text size, or touch-target size
+            from the controls in the site footer, that choice is saved in
+            strictly necessary cookies (<code>devafusion-a11y-theme</code>,{" "}
+            <code>devafusion-a11y-scale</code>, and{" "}
+            <code>devafusion-a11y-target</code>) so the site can apply it
             immediately on your next visit, before the page renders. These
             cookies store only your chosen preference value, are not used
             for tracking or analytics, and are not shared with any third
             party. Selecting &quot;System&quot; removes the theme cookie and
             returns the site to following your browser&apos;s own light or
             dark mode setting.
+          </p>
+          <p className="mt-2">
+            By default, every interactive control on this site (buttons,
+            links, checkboxes) meets a minimum touch-target size of 24×24
+            CSS pixels, the widely adopted baseline under WCAG 2.2 (Level
+            AA, Success Criterion 2.5.8). If you would like larger, easier
+            to reach controls, selecting &quot;AAA (44px)&quot; opts up to
+            the enhanced 44×44 CSS pixel target (Level AAA, Success
+            Criterion 2.5.5) instead - this is always an explicit choice
+            you make.
+          </p>
+          <p className="mt-2">
+            One control on this site - the &quot;Permanently delete my
+            account&quot; button on your account page - always meets the
+            enhanced 44×44 pixel target regardless of this setting. Deleting
+            your account cannot be undone, so that one action is never
+            made smaller by your own preference, even though every other
+            control on the site respects it.
           </p>
         </div>
 

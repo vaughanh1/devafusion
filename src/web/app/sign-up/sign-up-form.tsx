@@ -142,7 +142,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
           onChange={(event) => setName(event.target.value)}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={!!error}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
@@ -160,7 +160,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
           onChange={(event) => setEmail(event.target.value)}
           aria-describedby={error ? errorId : undefined}
           aria-invalid={!!error}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
@@ -184,7 +184,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
       <button
         type="submit"
         disabled={isSubmitting || !captchaToken}
-        className="min-h-11 cursor-pointer border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[var(--touch-target-size)] cursor-pointer border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "Creating account…" : "Create account"}
       </button>
