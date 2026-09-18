@@ -47,6 +47,7 @@ import { entry as mfaE2eVerificationAndDnsHardening } from "./entries/mfa-e2e-ve
 import { entry as mfaCiSandboxAndDeletionHandlerCoverage } from "./entries/mfa-ci-sandbox-and-deletion-handler-coverage";
 import { entry as ciFmtCheckDirectoryMismatch } from "./entries/ci-fmt-check-directory-mismatch";
 import { entry as cspDevModeUnsafeEval } from "./entries/csp-dev-mode-unsafe-eval";
+import { entry as acsDnsRootApexAndSenderImport } from "./entries/acs-dns-root-apex-and-sender-import";
 
 export type { LogEntry } from "./types";
 
@@ -104,6 +105,7 @@ const allEntries = [
   mfaCiSandboxAndDeletionHandlerCoverage,
   ciFmtCheckDirectoryMismatch,
   cspDevModeUnsafeEval,
+  acsDnsRootApexAndSenderImport,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

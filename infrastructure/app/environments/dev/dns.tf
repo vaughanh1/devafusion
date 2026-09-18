@@ -98,8 +98,24 @@ resource "azurerm_dns_txt_record" "devafusion_net_google_verification" {
   resource_group_name = azurerm_resource_group.app.name
   ttl                 = 3600
 
+  # Azure DNS treats every TXT value at a given name as one recordset
+  # (see devafusion_com_google_verification's own comment above for the
+  # original incident this pattern was established from) - the ACS
+  # Domain-ownership and SPF verification values below MUST live in
+  # this same resource rather than their own azurerm_dns_txt_record at
+  # "@", or terraform apply fails with "a resource with this ID
+  # already exists" (confirmed directly in a real failed apply run
+  # after they were briefly split out into standalone resources).
   record {
     value = data.azurerm_key_vault_secret.google_verification_devafusion_net.value
+  }
+
+  record {
+    value = module.email.verification_records[0].domain[0].value
+  }
+
+  record {
+    value = module.email.verification_records[0].spf[0].value
   }
 }
 
@@ -127,6 +143,14 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
 # different domain, different mail system (M365 mailboxes vs. this
 # app's own transactional MFA sender).
 #
+# Domain-ownership and SPF are both TXT records at the zone apex, so
+# their values are merged directly into devafusion_net_google_
+# verification above as additional record blocks - NOT declared as
+# their own azurerm_dns_txt_record resources here (see that
+# resource's own comment for why: Azure DNS treats every TXT value at
+# a given name as one recordset, and a second resource at "@"
+# collides with it, confirmed directly in a real failed apply run).
+#
 # azurerm's own verification_records[*].name may come back either
 # fully-qualified (with or without a trailing dot) or already
 # relative to the zone - Terraform's trimsuffix() is documented to be
@@ -135,35 +159,15 @@ resource "azurerm_dns_txt_record" "devafusion_co_uk_google_verification" {
 # possible fully-qualified suffix forms in sequence below is safe
 # regardless of which form Azure actually returns: an already-
 # relative name simply passes through every trimsuffix() unchanged,
-# since none of the three suffixes will match it.
+# since none of the three suffixes will match it. Kept here for the
+# DKIM/DKIM2 CNAME records below, which are NOT zone-apex and do get
+# their own resource each.
 locals {
   acs_domain_suffixes = [
     ".${local.primary_domain}.", # fully-qualified with trailing dot
     ".${local.primary_domain}",  # fully-qualified without trailing dot
     local.primary_domain,        # bare domain with no leading dot (unlikely, covered for safety)
   ]
-}
-
-resource "azurerm_dns_txt_record" "devafusion_net_acs_domain_verification" {
-  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].domain[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
-  zone_name           = azurerm_dns_zone.devafusion_net.name
-  resource_group_name = azurerm_resource_group.app.name
-  ttl                 = module.email.verification_records[0].domain[0].ttl
-
-  record {
-    value = module.email.verification_records[0].domain[0].value
-  }
-}
-
-resource "azurerm_dns_txt_record" "devafusion_net_acs_spf" {
-  name                = trimsuffix(trimsuffix(trimsuffix(module.email.verification_records[0].spf[0].name, local.acs_domain_suffixes[0]), local.acs_domain_suffixes[1]), local.acs_domain_suffixes[2])
-  zone_name           = azurerm_dns_zone.devafusion_net.name
-  resource_group_name = azurerm_resource_group.app.name
-  ttl                 = module.email.verification_records[0].spf[0].ttl
-
-  record {
-    value = module.email.verification_records[0].spf[0].value
-  }
 }
 
 resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim" {
@@ -191,7 +195,11 @@ resource "azurerm_dns_cname_record" "devafusion_net_acs_dkim2" {
 # mirrors for consistency; the actual record value is a literal
 # matching that same pattern, not Azure-computed, since ACS's
 # verification does not require a specific DMARC policy stringency,
-# only that a record exists at _dmarc.
+# only that a record exists at _dmarc. The aggregate-report address
+# (rua) points at devafusion.com, not devafusion.net - devafusion.net
+# is this app's own transactional ACS sender domain with no real M365
+# mailbox behind it, so dmarc@devafusion.net would simply bounce;
+# devafusion.com is the domain with actual human mailboxes.
 resource "azurerm_dns_txt_record" "devafusion_net_dmarc" {
   name                = "_dmarc"
   zone_name           = azurerm_dns_zone.devafusion_net.name
@@ -199,7 +207,7 @@ resource "azurerm_dns_txt_record" "devafusion_net_dmarc" {
   ttl                 = 3600
 
   record {
-    value = "v=DMARC1; p=none; rua=mailto:dmarc@devafusion.net"
+    value = "v=DMARC1; p=none; rua=mailto:dmarc@devafusion.com"
   }
 }
 
