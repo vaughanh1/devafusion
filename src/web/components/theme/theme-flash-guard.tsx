@@ -13,6 +13,8 @@ const THEME_FLASH_GUARD_SCRIPT = `(function(){try{
   if(m1)document.documentElement.setAttribute("data-a11y-theme",decodeURIComponent(m1[1]));
   var m2=document.cookie.match(/(?:^|; )devafusion-a11y-scale=([^;]*)/);
   if(m2)document.documentElement.setAttribute("data-a11y-scale",decodeURIComponent(m2[1]));
+  var m3=document.cookie.match(/(?:^|; )devafusion-a11y-target=([^;]*)/);
+  if(m3)document.documentElement.setAttribute("data-a11y-target",decodeURIComponent(m3[1]));
 }catch(e){}})()`;
 
 export function ThemeFlashGuard() {

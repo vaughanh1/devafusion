@@ -178,6 +178,49 @@ html[data-a11y-scale="accessible-xl"] {
   font-size: 125%;
 }
 
+/*
+ * WCAG conformance-level toggle (src/web/AGENTS.md's "What compliant
+ * actually requires you to do" section). --touch-target-size drives
+ * every interactive control's min-h-[var(--touch-target-size)]/
+ * min-w-[var(--touch-target-size)] utility.
+ *
+ * Defaults to 24px (WCAG 2.2 SC 2.5.8, Target Size Minimum, AA) - the
+ * widely accepted global legal/regulatory baseline for digital
+ * accessibility (this is a deliberate reversal of an earlier version
+ * of this rule, which defaulted to AAA; AA is the standard being met
+ * by default, AAA is offered as an explicit opt-UP, a showcase of
+ * the stricter bar, not the baseline every visitor is forced into).
+ * [data-a11y-target="aaa"] opts a visitor UP to 44px (WCAG 2.2
+ * SC 2.5.5, Target Size Enhanced, AAA) - same "System"-default
+ * pattern already established for color theme/scale above (this
+ * file's [data-a11y-theme]/[data-a11y-scale] rules): nothing
+ * regresses silently, a user makes an explicit choice either way.
+ *
+ * [data-touch-target-force] is a per-element escape hatch, not a
+ * site-wide setting: any element carrying
+ * data-touch-target-force="aaa" re-declares --touch-target-size to
+ * 44px on itself, overriding whatever the html-level AA/AAA toggle
+ * currently says - a critical control (e.g. a payment/donation
+ * button, an irreversible account-deletion confirm) can be pinned to
+ * the stricter bar regardless of the visitor's own site-wide
+ * preference. A plain CSS custom-property re-declaration on the
+ * element itself always wins over the inherited html-level value
+ * (nearer declaration in the cascade) - no !important needed, and
+ * nothing stops a future data-touch-target-force="aa" value being
+ * added the same way if a case for forcing DOWN ever arises.
+ */
+:root {
+  --touch-target-size: 1.5rem; /* 24px, WCAG 2.2 AA (SC 2.5.8) */
+}
+
+html[data-a11y-target="aaa"] {
+  --touch-target-size: 2.75rem; /* 44px, WCAG 2.2 AAA (SC 2.5.5) */
+}
+
+[data-touch-target-force="aaa"] {
+  --touch-target-size: 2.75rem; /* 44px, WCAG 2.2 AAA (SC 2.5.5) - always, regardless of the site-wide toggle. */
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

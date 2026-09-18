@@ -74,7 +74,8 @@ export function DeleteAccountForm() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           aria-describedby={error ? errorId : undefined}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-invalid={!!error}
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
@@ -92,14 +93,25 @@ export function DeleteAccountForm() {
           value={confirmation}
           onChange={(event) => setConfirmation(event.target.value)}
           aria-describedby={error ? errorId : undefined}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-invalid={!!error}
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
       <button
         type="submit"
         disabled={isSubmitting || !isConfirmed}
-        className="min-h-11 cursor-pointer self-start border border-surface-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+        // data-touch-target-force="aaa" (globals.css) - an
+        // irreversible, destructive action stays pinned to the
+        // stricter 44px WCAG 2.2 AAA target regardless of the
+        // visitor's own site-wide AA/AAA touch-target preference.
+        // This is the one control on this site where the consequence
+        // of a mis-tap (permanently deleting an account, no undo) is
+        // severe enough to justify overriding a user's own denser-
+        // layout choice, rather than deferring to it as every other
+        // control does.
+        data-touch-target-force="aaa"
+        className="min-h-[var(--touch-target-size)] cursor-pointer self-start border border-surface-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:border-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "Deleting…" : "Permanently delete my account"}
       </button>

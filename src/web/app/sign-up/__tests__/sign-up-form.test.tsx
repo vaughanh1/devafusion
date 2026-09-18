@@ -84,8 +84,11 @@ describe("SignUpForm", () => {
     turnstileResetMock.mockReset();
   });
 
-  it("redirects to the given path on a successful sign-up", async () => {
-    signUpEmailMock.mockResolvedValue({ data: {}, error: null });
+  it("redirects to the given path on a successful sign-up with a session (email verification not required)", async () => {
+    signUpEmailMock.mockResolvedValue({
+      data: { token: "fake-session-token" },
+      error: null,
+    });
     render(<SignUpForm redirectPath="/log" formTimingToken="test-token" />);
 
     fillAndSubmit();
@@ -94,8 +97,33 @@ describe("SignUpForm", () => {
     expect(refreshMock).toHaveBeenCalled();
   });
 
+  // auth.ts's requireEmailVerification means a fresh sign-up never
+  // gets a session - confirmed directly against the installed
+  // package's sign-up.mjs: token is explicitly null in that case.
+  // Redirecting as if signed in would be wrong; this asserts the
+  // "check your email" message instead, matching what a real
+  // deployment actually returns.
+  it("shows a check-your-email message instead of redirecting when no session token is returned", async () => {
+    signUpEmailMock.mockResolvedValue({
+      data: { token: null, user: { email: "ada@example.com" } },
+      error: null,
+    });
+    render(<SignUpForm redirectPath="/log" formTimingToken="test-token" />);
+
+    fillAndSubmit();
+
+    expect(
+      await screen.findByText(/check your inbox at/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
   it("passes the redirect path through as callbackURL", async () => {
-    signUpEmailMock.mockResolvedValue({ data: {}, error: null });
+    signUpEmailMock.mockResolvedValue({
+      data: { token: "fake-session-token" },
+      error: null,
+    });
     render(<SignUpForm redirectPath="/projects" formTimingToken="test-token" />);
 
     fillAndSubmit();
@@ -104,6 +132,35 @@ describe("SignUpForm", () => {
       expect(signUpEmailMock).toHaveBeenCalledWith(
         expect.objectContaining({ callbackURL: "/projects" }),
       ),
+    );
+  });
+
+  // Screen-reader compliance: aria-describedby alone links a field to
+  // the error text, but a screen reader only announces "invalid
+  // entry" when aria-invalid is also set - see password-field.tsx's
+  // own comment on why both are required, not one or the other.
+  it("marks every field aria-invalid when the server returns an error, and clears it once resolved", async () => {
+    signUpEmailMock.mockResolvedValue({
+      data: null,
+      error: { message: "Email already in use." },
+    });
+    render(<SignUpForm redirectPath="/" formTimingToken="test-token" />);
+
+    expect(screen.getByLabelText("Name")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByLabelText("Password", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+
+    fillAndSubmit();
+    await screen.findByRole("alert");
+
+    expect(screen.getByLabelText("Name")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Password", { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "true",
     );
   });
 

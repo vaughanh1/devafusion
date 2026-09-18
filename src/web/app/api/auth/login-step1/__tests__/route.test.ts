@@ -110,6 +110,25 @@ describe("POST /api/auth/login-step1", () => {
     expect(signInEmailMock).not.toHaveBeenCalled();
   });
 
+  // Better Auth's own signInEmail throws a distinct 403
+  // EMAIL_NOT_VERIFIED (confirmed directly against the installed
+  // package's sign-in.mjs) rather than the generic 401 an actual
+  // wrong password produces.
+  it("returns 403 with a verification message when the account's email is not verified", async () => {
+    verifyTurnstileTokenMock.mockResolvedValue(true);
+    signInEmailMock.mockResolvedValue({
+      ok: false,
+      status: 403,
+      headers: new Headers(),
+    });
+
+    const response = await POST(buildRequest(validBody));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toMatch(/verify your email address/i);
+  });
+
   it("returns 401 with a generic message when signInEmail rejects the credentials", async () => {
     verifyTurnstileTokenMock.mockResolvedValue(true);
     signInEmailMock.mockResolvedValue({ ok: false, headers: new Headers() });

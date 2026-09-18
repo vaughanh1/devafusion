@@ -66,11 +66,24 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
       });
 
       if (!response.ok) {
-        // Deliberately generic rather than echoing the server's own
-        // message verbatim - distinguishing "no such user" from
-        // "wrong password" enables account enumeration, the same
-        // rationale this form already applied before this route
-        // existed.
+        // A 403 is login-step1's own distinct "email not verified"
+        // status (not a credential guess) - safe to echo verbatim,
+        // unlike the 401 branch below: telling a user their own
+        // email needs verifying does not distinguish "no such user"
+        // from "wrong password" the way echoing a real auth failure
+        // message would (this form's existing account-enumeration
+        // rationale, unchanged for that branch).
+        if (response.status === 403) {
+          const body = await response.json().catch(() => null);
+          setError(
+            body?.error ??
+              "Please verify your email address before signing in.",
+          );
+          setIsSubmitting(false);
+          resetCaptcha();
+          return;
+        }
+
         setError("Invalid email or password.");
         setIsSubmitting(false);
         resetCaptcha();
@@ -132,7 +145,8 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           aria-describedby={error ? errorId : undefined}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-invalid={!!error}
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
@@ -145,6 +159,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
         value={password}
         onChange={setPassword}
         describedBy={error ? errorId : undefined}
+        isInvalid={!!error}
       />
 
       <TurnstileWidget onToken={setCaptchaToken} handleRef={turnstileRef} />
@@ -152,7 +167,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
       <button
         type="submit"
         disabled={isSubmitting || !captchaToken}
-        className="min-h-11 cursor-pointer border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[var(--touch-target-size)] cursor-pointer border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "Logging in…" : "Log in"}
       </button>

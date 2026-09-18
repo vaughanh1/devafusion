@@ -1,13 +1,21 @@
+import { randomBytes } from "node:crypto";
+
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { recordAuthAuditLog } from "@/features/auth/mfa/auth-audit-log";
+import { DrizzleTrustedDevicesRepository } from "@/features/auth/mfa/drizzle-trusted-devices-repository";
 import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
 import { securitySettingsRequestSchema } from "@/features/auth/mfa/security-settings.zod";
 import { consumeRateLimit } from "@/features/auth/rate-limit";
+import {
+  TRUSTED_DEVICE_COOKIE_NAME,
+  TRUSTED_DEVICE_MAX_AGE_SECONDS,
+} from "@/features/auth/mfa/trusted-device-cookie";
 
 const userSecurityRepository = new DrizzleUserSecurityRepository();
+const trustedDevicesRepository = new DrizzleTrustedDevicesRepository();
 
 // ADR-0014: outside Better Auth's own router - a looser window/max
 // than the credential-brute-force-target TOTP/verify routes, since
@@ -107,7 +115,39 @@ export async function POST(request: Request) {
       performedBy: session.user.id,
     });
 
-    return NextResponse.json({ updated: true });
+    const response = NextResponse.json({ updated: true });
+
+    // Selecting "30 days" here is the user's explicit statement that
+    // this device should be trusted for that period - without this,
+    // trusted_devices stayed empty until the next full MFA challenge
+    // at login, so saving this setting had no visible effect until
+    // then. Immediately trusting the current device (the one that
+    // just re-confirmed the account password above) matches what a
+    // user selecting this option actually expects to happen.
+    if (mfaFrequency === "30_days") {
+      const trustedDeviceId = randomBytes(32).toString("hex");
+      const expiresAt = new Date(
+        Date.now() + TRUSTED_DEVICE_MAX_AGE_SECONDS * 1000,
+      );
+
+      await trustedDevicesRepository.create({
+        id: trustedDeviceId,
+        userId: session.user.id,
+        deviceLabel:
+          requestHeaders.get("user-agent")?.slice(0, 255) ?? "Unknown device",
+        expiresAt,
+      });
+
+      response.cookies.set(TRUSTED_DEVICE_COOKIE_NAME, trustedDeviceId, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "strict",
+        path: "/",
+        maxAge: TRUSTED_DEVICE_MAX_AGE_SECONDS,
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("Security settings update failed", error);
     return NextResponse.json(

@@ -35,6 +35,21 @@ test.describe("MFA matrix", () => {
       page.getByRole("button", { name: /create account/i }),
     ).toBeEnabled({ timeout: 15_000 });
     await page.getByRole("button", { name: /create account/i }).click();
+
+    // requireEmailVerification (auth.ts) means sign-up itself never
+    // mints a session - fetch and follow the real verification link
+    // TEST_MFA_FLOWS makes auth.ts capture (test-verification-link-
+    // cache.ts), same as sign-up.spec.ts's identical step, since
+    // this account also needs a real session before TOTP enrolment
+    // below can proceed.
+    await expect(page.getByText(/check your inbox at/i)).toBeVisible();
+    const linkResponse = await page.request.get(
+      `/api/test-only/verification-link?email=${encodeURIComponent(email)}`,
+    );
+    expect(linkResponse.ok()).toBe(true);
+    const { url: verificationUrl } = await linkResponse.json();
+    expect(verificationUrl).toBeTruthy();
+    await page.goto(verificationUrl);
     await expect(page).not.toHaveURL(/\/sign-up/);
 
     // Enrol TOTP from the account settings dashboard.

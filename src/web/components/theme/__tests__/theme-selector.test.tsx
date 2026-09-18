@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   clearCookie,
   isA11yScale,
+  isA11yTarget,
   isA11yTheme,
   readCookie,
   writeCookie,
@@ -32,6 +33,19 @@ describe("isA11yScale", () => {
   it("rejects unknown or null values", () => {
     expect(isA11yScale("huge")).toBe(false);
     expect(isA11yScale(null)).toBe(false);
+  });
+});
+
+describe("isA11yTarget", () => {
+  it("accepts both documented WCAG conformance-level tokens", () => {
+    expect(isA11yTarget("aaa")).toBe(true);
+    expect(isA11yTarget("aa")).toBe(true);
+  });
+
+  it("rejects unknown or null values", () => {
+    expect(isA11yTarget("aaaa")).toBe(false);
+    expect(isA11yTarget(null)).toBe(false);
+    expect(isA11yTarget("")).toBe(false);
   });
 });
 

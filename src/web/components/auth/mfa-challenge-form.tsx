@@ -129,11 +129,12 @@ export function MfaChallengeForm({
           value={code}
           onChange={(event) => setCode(event.target.value)}
           aria-describedby={error ? errorId : undefined}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base tracking-widest text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-invalid={!!error}
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base tracking-widest text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
-      <label className="flex items-center gap-3 text-base text-foreground">
+      <label className="flex min-h-[var(--touch-target-size)] items-center gap-3 text-base text-foreground">
         <input
           id={trustDeviceId}
           type="checkbox"
@@ -147,7 +148,7 @@ export function MfaChallengeForm({
       <button
         type="submit"
         disabled={isSubmitting || code.length === 0}
-        className="min-h-11 cursor-pointer border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[var(--touch-target-size)] cursor-pointer border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? "Verifying…" : "Verify"}
       </button>

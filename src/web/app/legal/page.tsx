@@ -68,6 +68,25 @@ export default function LegalPage() {
             and keep it for as long as your account exists.
           </p>
           <p className="mt-2">
+            To confirm you own the email address you signed up with, and to
+            let you reset your password if you forget it, we send a
+            one-time link to that address using{" "}
+            <a
+              href="https://learn.microsoft.com/en-us/azure/communication-services/concepts/privacy"
+              rel="noreferrer"
+              target="_blank"
+              className="underline hover:text-foreground"
+            >
+              Azure Communication Services
+            </a>{" "}
+            (Microsoft), hosted in the UK for the same reason described
+            below under Multi-factor authentication. Until you click the
+            verification link, you cannot sign in - this is part of
+            providing the account service you requested (Article 6(1)(b)),
+            the same lawful basis as the rest of this section. Each link
+            expires after 1 hour and is not used for marketing or tracking.
+          </p>
+          <p className="mt-2">
             Signing in sets a session cookie so the site can recognise you
             as logged in. This cookie is strictly necessary to provide the
             account service you asked for and is exempt from active consent
@@ -185,16 +204,35 @@ export default function LegalPage() {
             Accessibility theme preference
           </h2>
           <p className="mt-2">
-            If you choose a colour theme or text size from the controls in
-            the site footer, that choice is saved in two strictly necessary
-            cookies (<code>devafusion-a11y-theme</code> and{" "}
-            <code>devafusion-a11y-scale</code>) so the site can apply it
+            If you choose a colour theme, text size, or touch-target size
+            from the controls in the site footer, that choice is saved in
+            strictly necessary cookies (<code>devafusion-a11y-theme</code>,{" "}
+            <code>devafusion-a11y-scale</code>, and{" "}
+            <code>devafusion-a11y-target</code>) so the site can apply it
             immediately on your next visit, before the page renders. These
             cookies store only your chosen preference value, are not used
             for tracking or analytics, and are not shared with any third
             party. Selecting &quot;System&quot; removes the theme cookie and
             returns the site to following your browser&apos;s own light or
             dark mode setting.
+          </p>
+          <p className="mt-2">
+            By default, every interactive control on this site (buttons,
+            links, checkboxes) meets a minimum touch-target size of 24×24
+            CSS pixels, the widely adopted baseline under WCAG 2.2 (Level
+            AA, Success Criterion 2.5.8). If you would like larger, easier
+            to reach controls, selecting &quot;AAA (44px)&quot; opts up to
+            the enhanced 44×44 CSS pixel target (Level AAA, Success
+            Criterion 2.5.5) instead - this is always an explicit choice
+            you make.
+          </p>
+          <p className="mt-2">
+            One control on this site - the &quot;Permanently delete my
+            account&quot; button on your account page - always meets the
+            enhanced 44×44 pixel target regardless of this setting. Deleting
+            your account cannot be undone, so that one action is never
+            made smaller by your own preference, even though every other
+            control on the site respects it.
           </p>
         </div>
 
@@ -204,9 +242,11 @@ export default function LegalPage() {
           </h2>
           <p className="mt-2">
             This site does not sell or share your data with third parties
-            beyond Google Analytics, Cloudflare Turnstile, and (if you
-            enable email-based MFA) Azure Communication Services, all
-            described above. It does not run advertising and does not
+            beyond Google Analytics, Cloudflare Turnstile, and Azure
+            Communication Services (used for every account&apos;s
+            verification and password-reset emails, and additionally
+            for email-based MFA if you enable it), all described above.
+            It does not run advertising and does not
             use any tracking cookies other than the analytics cookies
             described above. The accessibility preference, session, and
             trusted-device cookies described above store only your

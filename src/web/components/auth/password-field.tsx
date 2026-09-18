@@ -14,6 +14,18 @@ type PasswordFieldProps = {
   minLength?: number;
   required?: boolean;
   describedBy?: string;
+  // Screen-reader form-error requirement: aria-describedby alone
+  // links the field to the error text, but does not itself flag the
+  // field as invalid in the accessibility tree - a screen reader
+  // only reads the description if the user happens to navigate onto
+  // it. aria-invalid is what actually announces "invalid entry" when
+  // the field receives focus. Callers pass this as !!error (a
+  // boolean, not the error object) so the DOM attribute is always
+  // exactly "true" or "false", never absent - explicit false is
+  // correct here, unlike describedBy's undefined-when-clean pattern,
+  // because aria-invalid has no equivalent "absent means valid"
+  // convention screen readers can rely on.
+  isInvalid?: boolean;
 };
 
 // Shared across SignUpForm, LogInForm and ResetPasswordForm rather
@@ -32,6 +44,7 @@ export function PasswordField({
   minLength,
   required,
   describedBy,
+  isInvalid,
 }: PasswordFieldProps) {
   const [isRevealed, setIsRevealed] = useState(false);
   const toggleId = useId();
@@ -52,6 +65,7 @@ export function PasswordField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           aria-describedby={describedBy}
+          aria-invalid={!!isInvalid}
           // ADR-0014: passwordrules only makes sense for a NEW
           // password field - it tells the browser's generator what
           // to produce, which is meaningless (and would be
@@ -68,7 +82,7 @@ export function PasswordField({
           {...(autoComplete === "new-password"
             ? { passwordrules: PASSWORD_RULES_ATTRIBUTE }
             : {})}
-          className="min-h-11 w-full border border-surface-border bg-background px-3 pr-16 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="min-h-[var(--touch-target-size)] w-full border border-surface-border bg-background px-3 pr-16 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
         <button
           id={toggleId}
@@ -80,7 +94,13 @@ export function PasswordField({
           // native reveal toggle, so screen reader users hear the
           // control's current effect rather than a static label.
           aria-label={isRevealed ? "Hide password" : "Show password"}
-          className="absolute right-2 min-h-11 cursor-pointer px-2 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          // min-w-[var(--touch-target-size)] alongside min-h-[var(--touch-target-size)]: WCAG 2.2 SC 2.5.5 (Target
+          // Size, AAA) and the 44x44 CSS px minimum this project
+          // holds every interactive control to - px-2 alone gave
+          // this button a real clickable width of roughly the
+          // "Show"/"Hide" text plus 8px each side (well under 44px),
+          // even though its height already cleared the bar.
+          className="absolute right-2 flex min-h-[var(--touch-target-size)] min-w-[var(--touch-target-size)] cursor-pointer items-center justify-center px-2 text-xs font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {isRevealed ? "Hide" : "Show"}
         </button>

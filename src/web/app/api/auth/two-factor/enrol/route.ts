@@ -9,39 +9,95 @@ import {
 } from "@/features/auth/mfa/backup-code-hash";
 import { DrizzleBackupCodesRepository } from "@/features/auth/mfa/drizzle-backup-codes-repository";
 import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
+import { enrolTotpRequestSchema } from "@/features/auth/mfa/enrol-totp.zod";
 import { renderTotpQrCodeDataUri } from "@/features/auth/mfa/totp-qr-code";
 
 const userSecurityRepository = new DrizzleUserSecurityRepository();
 const backupCodesRepository = new DrizzleBackupCodesRepository();
 
-// otpauth's own TOTP issuer/label - "DevAFusion" matches this
+// otpauth's own TOTP issuer/label - "Devafusion" matches this
 // project's actual brand name (components/brand/brand-mark.tsx),
 // shown by every authenticator app next to the generated 6-digit
 // code, so a user with multiple accounts across apps can identify
-// which entry belongs to this site.
-const TOTP_ISSUER = "DevAFusion";
+// which entry belongs to this site. Note: an already-enrolled
+// account's authenticator app keeps whatever issuer string was baked
+// into its QR code at enrolment time - this only takes effect for
+// new/re-enrolments.
+const TOTP_ISSUER = "Devafusion";
 
 // Self-built TOTP enrolment (docs/adr/0012, docs/adr's MFA-matrix
 // slice) - deliberately not Better Auth's own twoFactor plugin's
 // enable endpoint, for the same plaintext-secret-storage reason
 // already documented throughout features/auth/mfa/.
-export async function POST() {
+export async function POST(request: Request) {
   // Explicit server-side error handling (src/web/AGENTS.md) - every
   // branch below either returns a Response or is caught, never an
   // unhandled rejection.
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const requestHeaders = await headers();
+    const session = await auth.api.getSession({ headers: requestHeaders });
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Body is optional - a first-time enrolment (the common case) has
+    // no existing factor to prove ownership of and sends none; the
+    // schema treats a missing/empty body as {} rather than a parse
+    // error.
+    const rawBody = await request.text();
+    const parsed = enrolTotpRequestSchema.safeParse(
+      rawBody ? JSON.parse(rawBody) : {},
+    );
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request", issues: parsed.error.issues },
+        { status: 400 },
+      );
+    }
+
     const userId = session.user.id;
     const existing = await userSecurityRepository.findByUserId(userId);
+
+    // A RE-enrolment (recovering from a lost/reset authenticator
+    // device) is only allowed once the account's current password is
+    // re-confirmed - mirroring the same re-authorization requirement
+    // /api/user/security/settings already enforces for any change to
+    // this table. Without this gate, anyone with a live session
+    // (e.g. from a stolen cookie) could silently replace the TOTP
+    // secret and lock the real owner's authenticator app out.
     if (existing?.twoFactorEnabled) {
-      return NextResponse.json(
-        { error: "Two-factor authentication is already enabled for this account." },
-        { status: 409 },
-      );
+      if (!parsed.data.password) {
+        return NextResponse.json(
+          {
+            error:
+              "Your current password is required to reset an existing authenticator app.",
+          },
+          { status: 400 },
+        );
+      }
+
+      try {
+        await auth.api.verifyPassword({
+          body: { password: parsed.data.password },
+          headers: requestHeaders,
+        });
+      } catch {
+        return NextResponse.json(
+          { error: "Incorrect password." },
+          { status: 401 },
+        );
+      }
+
+      // Flip back to false for the duration of the re-enrolment
+      // window - the freshly generated secret below has not yet been
+      // proven to work with the user's authenticator app. Leaving
+      // the prior secret marked enabled while replacing it would
+      // create a real lockout: if the user abandons this flow before
+      // calling /api/auth/two-factor/confirm, the account would be
+      // stuck depending on a secret no working app has ever scanned.
+      // /api/auth/two-factor/confirm is still what flips this back to
+      // true, exactly as it does for a first-time enrolment.
+      await userSecurityRepository.setTwoFactorEnabled(userId, false);
     }
 
     const secret = new OTPAuth.Secret({ size: 20 });

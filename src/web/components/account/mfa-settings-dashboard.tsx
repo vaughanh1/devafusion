@@ -97,7 +97,7 @@ export function MfaSettingsDashboard() {
         {(Object.keys(FACTOR_LABELS) as FactorOption[]).map((option) => (
           <label
             key={option}
-            className="flex items-center gap-3 text-base text-foreground"
+            className="flex min-h-[var(--touch-target-size)] items-center gap-3 text-base text-foreground"
           >
             <input
               type="radio"
@@ -121,7 +121,7 @@ export function MfaSettingsDashboard() {
         <legend className="text-sm font-medium text-foreground">
           Re-challenge frequency
         </legend>
-        <label className="flex items-center gap-3 text-base text-foreground">
+        <label className="flex min-h-[var(--touch-target-size)] items-center gap-3 text-base text-foreground">
           <input
             type="radio"
             name="frequency"
@@ -132,7 +132,7 @@ export function MfaSettingsDashboard() {
           />
           Every sign-in
         </label>
-        <label className="flex items-center gap-3 text-base text-foreground">
+        <label className="flex min-h-[var(--touch-target-size)] items-center gap-3 text-base text-foreground">
           <input
             type="radio"
             name="frequency"
@@ -164,7 +164,7 @@ export function MfaSettingsDashboard() {
               protection and increases the risk of unauthorized access.
             </span>
           </p>
-          <label className="flex items-center gap-3">
+          <label className="flex min-h-[var(--touch-target-size)] items-center gap-3">
             <input
               id={riskId}
               type="checkbox"
@@ -193,14 +193,15 @@ export function MfaSettingsDashboard() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           aria-describedby={error ? errorId : undefined}
-          className="min-h-11 border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          aria-invalid={!!error}
+          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         />
       </div>
 
       <button
         type="submit"
         disabled={isSaving || !canSave}
-        className="min-h-11 cursor-pointer self-start border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+        className="min-h-[var(--touch-target-size)] cursor-pointer self-start border border-accent bg-accent px-4 text-sm font-medium text-accent-foreground transition-colors hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSaving ? "Saving…" : "Save security settings"}
       </button>
