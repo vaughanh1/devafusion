@@ -1,7 +1,6 @@
 import "server-only";
 
-import { EmailClient } from "@azure/communication-email";
-
+import { getEmailClient, getSenderAddress } from "../acs-email-client";
 import { emailOtpBody, emailOtpSubject } from "./email-otp-content";
 import { formatOtpForAccessibility } from "./format-otp-for-accessibility";
 
@@ -53,30 +52,11 @@ import { formatOtpForAccessibility } from "./format-otp-for-accessibility";
 // project's expected MFA-OTP volume this is a small, metered cost,
 // but it is a real, ongoing line item against this project's Azure
 // bill, not a zero-cost service.
-let emailClient: EmailClient | undefined;
-
-function getEmailClient(): EmailClient {
-  const connectionString = process.env.ACS_EMAIL_CONNECTION_STRING;
-  if (!connectionString) {
-    throw new Error(
-      "ACS_EMAIL_CONNECTION_STRING is not set - cannot dispatch an MFA email OTP.",
-    );
-  }
-
-  emailClient ??= new EmailClient(connectionString);
-  return emailClient;
-}
-
 export async function sendEmailOtp(
   toEmail: string,
   code: string,
 ): Promise<void> {
-  const senderAddress = process.env.ACS_EMAIL_MFA_SENDER_ADDRESS;
-  if (!senderAddress) {
-    throw new Error(
-      "ACS_EMAIL_MFA_SENDER_ADDRESS is not set - cannot dispatch an MFA email OTP.",
-    );
-  }
+  const senderAddress = getSenderAddress();
 
   // UK GDPR/accessibility requirement, not cosmetic: a bare 6-digit
   // run is read by screen readers and spoken aloud as one large

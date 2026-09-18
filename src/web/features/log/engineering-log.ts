@@ -50,6 +50,7 @@ import { entry as cspDevModeUnsafeEval } from "./entries/csp-dev-mode-unsafe-eva
 import { entry as acsDnsRootApexAndSenderImport } from "./entries/acs-dns-root-apex-and-sender-import";
 import { entry as autoLocalPostgresOnDev } from "./entries/auto-local-postgres-on-dev";
 import { entry as mfaTrustedDevicesIssuerAndReenrol } from "./entries/mfa-trusted-devices-issuer-and-reenrol";
+import { entry as enforceEmailVerification } from "./entries/enforce-email-verification";
 
 export type { LogEntry } from "./types";
 
@@ -110,6 +111,7 @@ const allEntries = [
   acsDnsRootApexAndSenderImport,
   autoLocalPostgresOnDev,
   mfaTrustedDevicesIssuerAndReenrol,
+  enforceEmailVerification,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

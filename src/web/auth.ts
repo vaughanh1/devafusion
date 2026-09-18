@@ -6,10 +6,23 @@ import { captcha } from "better-auth/plugins";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 
 import { db } from "@/db/client";
+import {
+  emailResetPasswordBody,
+  emailResetPasswordSubject,
+} from "@/features/auth/email-reset-password-content";
+import {
+  emailVerificationBody,
+  emailVerificationSubject,
+} from "@/features/auth/email-verification-content";
 import { verifyFormTimingToken } from "@/features/auth/form-timing-token";
 import { deleteMfaDataForUser } from "@/features/auth/mfa/mfa-deletion-handler";
 import { TRUSTED_DEVICE_COOKIE_NAME } from "@/features/auth/mfa/trusted-device-cookie";
 import { isPasswordStrongEnough } from "@/features/auth/password-strength";
+import { sendTransactionalLinkEmail } from "@/features/auth/send-transactional-link-email";
+import {
+  captureTestVerificationLink,
+  isTestVerificationCaptureEnabled,
+} from "@/features/auth/test-verification-link-cache";
 
 // Paths carrying a client-rendered form protected by the stateless
 // timing heuristic (docs/adr/0014, features/auth/form-timing-token.ts)
@@ -44,19 +57,54 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   emailAndPassword: {
     enabled: true,
-    // UK GDPR Article 15/17 "right to be forgotten" self-service flows
-    // (account export/deletion) are already built; a password-reset
-    // flow is this slice's own addition (docs/adr/0014). There is no
-    // email-sending infrastructure in this project yet (same gap noted
-    // on user.deleteUser below) - this callback logs loudly rather than
-    // silently pretending to send an email, so the gap stays visible
-    // until a real provider (Azure Communication Services Email or a
-    // transactional API) is deliberately chosen as its own decision.
+    // ACS email infrastructure (infrastructure/app/modules/email,
+    // features/auth/send-transactional-link-email.ts) is now live
+    // and domain-verified - this callback no longer needs to log-
+    // and-skip; it dispatches the real reset link.
+    // requireEmailVerification below is a separate, independent gate
+    // (this option only covers password-reset, not sign-in) and does
+    // not depend on this one.
     sendResetPassword: async ({ user, url }) => {
-      console.warn(
-        `[auth] sendResetPassword called for user ${user.id} but no email provider is configured yet - reset URL was NOT delivered: ${url}`,
+      await sendTransactionalLinkEmail(
+        user.email,
+        emailResetPasswordSubject(),
+        emailResetPasswordBody(url),
       );
     },
+    // Deliberately enabled now that real email delivery exists
+    // (previously deferred specifically because there was nothing to
+    // verify an actually-unreachable email address against). An
+    // unverified account cannot sign in; emailVerification below
+    // handles both the initial dispatch (sendOnSignUp) and every
+    // retry a blocked sign-in attempt triggers.
+    requireEmailVerification: true,
+  },
+  // Sends the real verification link via the same ACS infrastructure
+  // the MFA email-OTP factor already uses (features/auth/mfa/send-
+  // email-otp.ts) - see acs-email-client.ts's own comment for why
+  // both share one client/sender-address lookup.
+  emailVerification: {
+    sendVerificationEmail: async ({ user, url }) => {
+      // TEST_DB_ACTIONS/TEST_MFA_FLOWS only (never in a real
+      // deployment - see test-verification-link-cache.ts's own
+      // comment): captures the real link so tests-e2e/sign-up.spec.ts
+      // and mfa-flow.spec.ts can click through it exactly as a real
+      // user would, and skips the actual ACS send - there is no real
+      // inbox to check in this mode, and pipelines/ci/web.yml's
+      // E2ETests job has no ACS_EMAIL_CONNECTION_STRING configured,
+      // so a real send attempt here would just throw.
+      if (isTestVerificationCaptureEnabled()) {
+        captureTestVerificationLink(user.email, url);
+        return;
+      }
+      await sendTransactionalLinkEmail(
+        user.email,
+        emailVerificationSubject(),
+        emailVerificationBody(url),
+      );
+    },
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
   },
   // ADR-0014: rate limiting is enabled in every environment (Better
   // Auth defaults to disabled outside production) since this app has

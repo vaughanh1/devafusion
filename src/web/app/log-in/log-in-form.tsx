@@ -66,11 +66,24 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
       });
 
       if (!response.ok) {
-        // Deliberately generic rather than echoing the server's own
-        // message verbatim - distinguishing "no such user" from
-        // "wrong password" enables account enumeration, the same
-        // rationale this form already applied before this route
-        // existed.
+        // A 403 is login-step1's own distinct "email not verified"
+        // status (not a credential guess) - safe to echo verbatim,
+        // unlike the 401 branch below: telling a user their own
+        // email needs verifying does not distinguish "no such user"
+        // from "wrong password" the way echoing a real auth failure
+        // message would (this form's existing account-enumeration
+        // rationale, unchanged for that branch).
+        if (response.status === 403) {
+          const body = await response.json().catch(() => null);
+          setError(
+            body?.error ??
+              "Please verify your email address before signing in.",
+          );
+          setIsSubmitting(false);
+          resetCaptcha();
+          return;
+        }
+
         setError("Invalid email or password.");
         setIsSubmitting(false);
         resetCaptcha();

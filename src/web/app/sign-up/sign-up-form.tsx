@@ -29,6 +29,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
 
   // ADR-0014: a Turnstile token is single-use and expires after 300
@@ -65,7 +66,7 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
     }
 
     try {
-      const { error: signUpError } = await authClient.signUp.email({
+      const { data, error: signUpError } = await authClient.signUp.email({
         name,
         email,
         password,
@@ -92,6 +93,18 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
         return;
       }
 
+      // requireEmailVerification (auth.ts) means a fresh sign-up gets
+      // no session - confirmed directly against the installed
+      // package's sign-up.mjs: token is explicitly null in this
+      // case, with no Set-Cookie ever issued. Redirecting as if
+      // signed in would be wrong; show the "check your email"
+      // message instead and stop here, same page.
+      if (!data?.token) {
+        setNeedsVerification(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       router.push(redirectPath);
       router.refresh();
     } catch {
@@ -99,6 +112,16 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
       setIsSubmitting(false);
       resetCaptcha();
     }
+  }
+
+  if (needsVerification) {
+    return (
+      <p role="status" className="mt-10 text-lg leading-8 text-muted">
+        Account created. Check your inbox at{" "}
+        <span className="font-medium text-foreground">{email}</span> for a
+        verification link before signing in.
+      </p>
+    );
   }
 
   return (

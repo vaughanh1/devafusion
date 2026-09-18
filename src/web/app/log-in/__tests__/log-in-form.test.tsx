@@ -149,6 +149,28 @@ describe("LogInForm", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
+  // login-step1/route.ts surfaces Better Auth's own distinct 403
+  // EMAIL_NOT_VERIFIED status separately from a generic 401 - this
+  // is the one case where echoing the server's message verbatim is
+  // safe (it doesn't enable account enumeration the way echoing a
+  // real credential-mismatch message would).
+  it("shows the server's verification message on a 403 response", async () => {
+    stubFetch();
+    fetchMock.mockResolvedValue(
+      jsonResponse(403, {
+        error:
+          "Please verify your email address before signing in. Check your inbox for a verification link.",
+      }),
+    );
+    render(<LogInForm redirectPath="/" formTimingToken="test-token" />);
+
+    fillAndSubmit();
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/verify your email address/i);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
   it("shows a generic error when the request throws", async () => {
     stubFetch();
     fetchMock.mockRejectedValue(new Error("network down"));

@@ -99,6 +99,24 @@ export async function POST(request: Request) {
     });
 
     if (!signInResponse.ok) {
+      // Better Auth's own signInEmail throws a distinct 403
+      // EMAIL_NOT_VERIFIED (confirmed directly against the installed
+      // package's sign-in.mjs) rather than the generic 401 an actual
+      // wrong password produces - surfaced here as its own status so
+      // the frontend can show "please verify your email" rather than
+      // the deliberately generic "Invalid email or password."
+      // (account-enumeration rationale, this route's own existing
+      // comment) that a genuine credential mismatch still gets.
+      if (signInResponse.status === 403) {
+        return NextResponse.json(
+          {
+            error:
+              "Please verify your email address before signing in. Check your inbox for a verification link.",
+          },
+          { status: 403 },
+        );
+      }
+
       return NextResponse.json(
         { error: "Invalid email or password." },
         { status: 401 },

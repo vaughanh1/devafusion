@@ -45,8 +45,10 @@ test.describe("sign-up", () => {
     // features/auth/form-timing-token.ts) even if it could be clicked.
     await expect(submitButton).toBeDisabled();
 
+    const email = `ada-${Date.now()}@example.com`;
+
     await page.getByLabel("Name").fill("Ada Lovelace");
-    await page.getByLabel("Email").fill(`ada-${Date.now()}@example.com`);
+    await page.getByLabel("Email").fill(email);
     // exact: true - PasswordField's reveal button carries
     // aria-label="Show password", and Playwright's getByLabel does
     // substring matching by default, so an unqualified "Password"
@@ -68,8 +70,32 @@ test.describe("sign-up", () => {
 
     await submitButton.click();
 
-    // A successful sign-up redirects away from /sign-up (default
-    // redirectPath is "/" per resolveSafeRedirectPath's fallback).
+    // requireEmailVerification (auth.ts) means sign-up itself never
+    // mints a session - the form correctly stays on /sign-up and
+    // shows a "check your email" message instead of redirecting.
+    await expect(
+      page.getByText(/check your inbox at/i),
+    ).toBeVisible();
+
+    // TEST_DB_ACTIONS being true is exactly what makes auth.ts
+    // capture the real verification link instead of only sending it
+    // via ACS (test-verification-link-cache.ts) - fetch it and
+    // navigate to it directly, the same as a real user clicking the
+    // link in their inbox. app/api/test-only/verification-link 404s
+    // outright unless this same flag is set, so this call has no
+    // path to succeed against a real deployment.
+    const linkResponse = await page.request.get(
+      `/api/test-only/verification-link?email=${encodeURIComponent(email)}`,
+    );
+    expect(linkResponse.ok()).toBe(true);
+    const { url: verificationUrl } = await linkResponse.json();
+    expect(verificationUrl).toBeTruthy();
+
+    // autoSignInAfterVerification (auth.ts) mints a real session and
+    // redirects to callbackURL server-side once this resolves -
+    // proves the full real verification flow, not just that a link
+    // was captured.
+    await page.goto(verificationUrl);
     await expect(page).not.toHaveURL(/\/sign-up/);
   });
 

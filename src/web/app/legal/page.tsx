@@ -68,6 +68,25 @@ export default function LegalPage() {
             and keep it for as long as your account exists.
           </p>
           <p className="mt-2">
+            To confirm you own the email address you signed up with, and to
+            let you reset your password if you forget it, we send a
+            one-time link to that address using{" "}
+            <a
+              href="https://learn.microsoft.com/en-us/azure/communication-services/concepts/privacy"
+              rel="noreferrer"
+              target="_blank"
+              className="underline hover:text-foreground"
+            >
+              Azure Communication Services
+            </a>{" "}
+            (Microsoft), hosted in the UK for the same reason described
+            below under Multi-factor authentication. Until you click the
+            verification link, you cannot sign in - this is part of
+            providing the account service you requested (Article 6(1)(b)),
+            the same lawful basis as the rest of this section. Each link
+            expires after 1 hour and is not used for marketing or tracking.
+          </p>
+          <p className="mt-2">
             Signing in sets a session cookie so the site can recognise you
             as logged in. This cookie is strictly necessary to provide the
             account service you asked for and is exempt from active consent
@@ -204,9 +223,11 @@ export default function LegalPage() {
           </h2>
           <p className="mt-2">
             This site does not sell or share your data with third parties
-            beyond Google Analytics, Cloudflare Turnstile, and (if you
-            enable email-based MFA) Azure Communication Services, all
-            described above. It does not run advertising and does not
+            beyond Google Analytics, Cloudflare Turnstile, and Azure
+            Communication Services (used for every account&apos;s
+            verification and password-reset emails, and additionally
+            for email-based MFA if you enable it), all described above.
+            It does not run advertising and does not
             use any tracking cookies other than the analytics cookies
             described above. The accessibility preference, session, and
             trusted-device cookies described above store only your

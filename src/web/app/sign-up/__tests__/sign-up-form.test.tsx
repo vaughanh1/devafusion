@@ -84,8 +84,11 @@ describe("SignUpForm", () => {
     turnstileResetMock.mockReset();
   });
 
-  it("redirects to the given path on a successful sign-up", async () => {
-    signUpEmailMock.mockResolvedValue({ data: {}, error: null });
+  it("redirects to the given path on a successful sign-up with a session (email verification not required)", async () => {
+    signUpEmailMock.mockResolvedValue({
+      data: { token: "fake-session-token" },
+      error: null,
+    });
     render(<SignUpForm redirectPath="/log" formTimingToken="test-token" />);
 
     fillAndSubmit();
@@ -94,8 +97,33 @@ describe("SignUpForm", () => {
     expect(refreshMock).toHaveBeenCalled();
   });
 
+  // auth.ts's requireEmailVerification means a fresh sign-up never
+  // gets a session - confirmed directly against the installed
+  // package's sign-up.mjs: token is explicitly null in that case.
+  // Redirecting as if signed in would be wrong; this asserts the
+  // "check your email" message instead, matching what a real
+  // deployment actually returns.
+  it("shows a check-your-email message instead of redirecting when no session token is returned", async () => {
+    signUpEmailMock.mockResolvedValue({
+      data: { token: null, user: { email: "ada@example.com" } },
+      error: null,
+    });
+    render(<SignUpForm redirectPath="/log" formTimingToken="test-token" />);
+
+    fillAndSubmit();
+
+    expect(
+      await screen.findByText(/check your inbox at/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
   it("passes the redirect path through as callbackURL", async () => {
-    signUpEmailMock.mockResolvedValue({ data: {}, error: null });
+    signUpEmailMock.mockResolvedValue({
+      data: { token: "fake-session-token" },
+      error: null,
+    });
     render(<SignUpForm redirectPath="/projects" formTimingToken="test-token" />);
 
     fillAndSubmit();
