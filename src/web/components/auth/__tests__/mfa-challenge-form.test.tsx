@@ -1,14 +1,22 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { pushMock, refreshMock, fetchMock } = vi.hoisted(() => ({
+const { pushMock, refreshMock, fetchMock, notifySessionChangedMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
   refreshMock: vi.fn(),
   fetchMock: vi.fn(),
+  notifySessionChangedMock: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
+}));
+
+// two-factor/verify releases the withheld session outside authClient's
+// own dispatch (auth-client.ts's own comment) - see log-in-form.test.tsx's
+// identical rationale.
+vi.mock("@/features/auth/auth-client", () => ({
+  notifySessionChanged: notifySessionChangedMock,
 }));
 
 import { MfaChallengeForm } from "@/components/auth/mfa-challenge-form";
@@ -27,6 +35,7 @@ describe("MfaChallengeForm", () => {
     pushMock.mockReset();
     refreshMock.mockReset();
     fetchMock.mockReset();
+    notifySessionChangedMock.mockReset();
     vi.unstubAllGlobals();
   });
 
@@ -50,6 +59,7 @@ describe("MfaChallengeForm", () => {
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/log"));
     expect(refreshMock).toHaveBeenCalled();
+    expect(notifySessionChangedMock).toHaveBeenCalled();
 
     const [, options] = fetchMock.mock.calls[0]!;
     expect(JSON.parse(options.body)).toEqual({
@@ -103,6 +113,10 @@ describe("MfaChallengeForm", () => {
       await screen.findByLabelText(/enter the 6-digit code we emailed you/i),
     ).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
+    // The matrix isn't satisfied yet - notifying here would make the
+    // header briefly show a logged-in state before the remaining
+    // factor is actually verified.
+    expect(notifySessionChangedMock).not.toHaveBeenCalled();
   });
 
   it("shows an expiry message on 410 Gone", async () => {

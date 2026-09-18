@@ -11,15 +11,25 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 // vi.mock factories are hoisted above top-level variable declarations,
 // so the mock functions they reference must be created via vi.hoisted
 // rather than a plain const.
-const { pushMock, refreshMock, fetchMock, turnstileResetMock } = vi.hoisted(() => ({
-  pushMock: vi.fn(),
-  refreshMock: vi.fn(),
-  fetchMock: vi.fn(),
-  turnstileResetMock: vi.fn(),
-}));
+const { pushMock, refreshMock, fetchMock, turnstileResetMock, notifySessionChangedMock } =
+  vi.hoisted(() => ({
+    pushMock: vi.fn(),
+    refreshMock: vi.fn(),
+    fetchMock: vi.fn(),
+    turnstileResetMock: vi.fn(),
+    notifySessionChangedMock: vi.fn(),
+  }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock, refresh: refreshMock }),
+}));
+
+// login-step1 mints a real session outside authClient's own dispatch
+// (auth-client.ts's own comment) - LogInForm must nudge
+// authClient.useSession()'s nanostore or the header keeps showing
+// stale logged-out state after a real successful login.
+vi.mock("@/features/auth/auth-client", () => ({
+  notifySessionChanged: notifySessionChangedMock,
 }));
 
 // ADR-0014: see sign-up-form.test.tsx's identical comment.
@@ -66,6 +76,7 @@ describe("LogInForm", () => {
     refreshMock.mockReset();
     fetchMock.mockReset();
     turnstileResetMock.mockReset();
+    notifySessionChangedMock.mockReset();
     vi.unstubAllGlobals();
   });
 
@@ -82,6 +93,7 @@ describe("LogInForm", () => {
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/log"));
     expect(refreshMock).toHaveBeenCalled();
+    expect(notifySessionChangedMock).toHaveBeenCalled();
   });
 
   it("posts email/password/captchaToken/formTimingToken to /api/auth/login-step1", async () => {
@@ -119,6 +131,10 @@ describe("LogInForm", () => {
       await screen.findByLabelText(/enter the 6-digit code from your authenticator app/i),
     ).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
+    // No session has actually been released to the client yet - the
+    // matrix isn't satisfied until MfaChallengeForm's own submission
+    // succeeds, so notifying here would be premature.
+    expect(notifySessionChangedMock).not.toHaveBeenCalled();
   });
 
   it("shows a single generic message on invalid credentials", async () => {

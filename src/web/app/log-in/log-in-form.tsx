@@ -8,6 +8,7 @@ import { MfaChallengeForm } from "@/components/auth/mfa-challenge-form";
 import { PasswordField } from "@/components/auth/password-field";
 import type { TurnstileWidgetHandle } from "@/components/auth/turnstile-widget";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { notifySessionChanged } from "@/features/auth/auth-client";
 
 type LogInFormProps = {
   redirectPath: string;
@@ -87,6 +88,14 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
         return;
       }
 
+      // The session was just minted by login-step1's own server-side
+      // signInEmail call, entirely outside authClient's dispatch -
+      // router.refresh() alone only invalidates Server Component
+      // data, not authClient.useSession()'s client-side nanostore
+      // (AccountNav's header, e.g.), which would otherwise keep
+      // showing stale logged-out state until an unrelated refetch
+      // trigger (hard reload, window-focus) happens to fire.
+      notifySessionChanged();
       router.push(redirectPath);
       router.refresh();
     } catch {
