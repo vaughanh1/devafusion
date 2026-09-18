@@ -52,6 +52,10 @@ import { entry as autoLocalPostgresOnDev } from "./entries/auto-local-postgres-o
 import { entry as mfaTrustedDevicesIssuerAndReenrol } from "./entries/mfa-trusted-devices-issuer-and-reenrol";
 import { entry as enforceEmailVerification } from "./entries/enforce-email-verification";
 import { entry as formErrorAriaInvalid } from "./entries/form-error-aria-invalid";
+import { entry as keyboardOnlyNavigationE2e } from "./entries/keyboard-only-navigation-e2e";
+import { entry as touchTargetAndContrastAudit } from "./entries/touch-target-and-contrast-audit";
+import { entry as accessibilityChecklistToolingGaps } from "./entries/accessibility-checklist-tooling-gaps";
+import { entry as accessibilityTargetWcag22 } from "./entries/accessibility-target-wcag-2-2";
 
 export type { LogEntry } from "./types";
 
@@ -114,6 +118,10 @@ const allEntries = [
   mfaTrustedDevicesIssuerAndReenrol,
   enforceEmailVerification,
   formErrorAriaInvalid,
+  keyboardOnlyNavigationE2e,
+  touchTargetAndContrastAudit,
+  accessibilityChecklistToolingGaps,
+  accessibilityTargetWcag22,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
