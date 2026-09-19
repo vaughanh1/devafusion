@@ -156,6 +156,19 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       qrCodeDataUri,
+      // Raw otpauth:// URI, alongside the rendered QR - offered as a
+      // tappable link for the case a QR code cannot actually solve:
+      // a user whose only camera-equipped device IS the phone they
+      // are enrolling on has nothing else to scan the code with.
+      // otpauth:// itself is confirmed as the real, standard scheme
+      // (Google Authenticator's own published Key Uri Format spec) -
+      // whether a given installed authenticator app registers as its
+      // OS-level handler was not independently verified per-app here
+      // (varies by app/OS and is outside what this server can check),
+      // so the frontend must degrade gracefully (a plain link, not an
+      // auto-triggered redirect) if tapping it does nothing on a
+      // particular device.
+      otpauthUri,
       manualEntrySecret: secret.base32,
       backupCodes,
     });

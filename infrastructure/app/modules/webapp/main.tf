@@ -33,6 +33,35 @@ resource "azurerm_linux_web_app" "this" {
 
   }
 
+  # Confirmed as a real, undiagnosable-in-production gap (a 24-byte
+  # MFA_ENCRYPTION_KEY caused a genuine 500 on /api/auth/two-factor/enrol
+  # with zero server-side visibility - App Service application logging
+  # was Off, and Application Insights does not yet support the Node 24
+  # LTS runtime this app is pinned to). file_system_level is set to its
+  # most permissive value ("Verbose") deliberately: this is a plain
+  # Node process writing to stdout/stderr, not a .NET app using
+  # ILogger-style severity tracing, so this setting does not filter by
+  # this app's own console.error/console.log call sites the way it
+  # would for a .NET app - it primarily gates whether the platform
+  # captures the container's stdout/stderr at all. A narrower level
+  # (Warning/Error) risks silently dropping exactly the console.error
+  # output this change exists to capture, for a disk-space savings
+  # that retention_in_mb below already bounds independently. Costs
+  # nothing beyond that capped local disk usage - no Azure Storage
+  # account introduced.
+  logs {
+    application_logs {
+      file_system_level = "Verbose"
+    }
+
+    http_logs {
+      file_system {
+        retention_in_mb   = 35
+        retention_in_days = 7
+      }
+    }
+  }
+
   # ADR-0014: Access Restrictions were evaluated and deliberately NOT
   # added in this slice, for two different reasons:
   # - On the main app: this is a public site with open self-service

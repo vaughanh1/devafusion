@@ -16,6 +16,7 @@ type EnrolmentStep =
   | {
       stage: "scanning";
       qrCodeDataUri: string;
+      otpauthUri: string;
       manualEntrySecret: string;
       backupCodes: string[];
     }
@@ -85,9 +86,11 @@ export function TotpEnrolment() {
       setStep({
         stage: "scanning",
         qrCodeDataUri: body.qrCodeDataUri,
+        otpauthUri: body.otpauthUri,
         manualEntrySecret: body.manualEntrySecret,
         backupCodes: body.backupCodes,
       });
+      setConfirmCode("");
       setIsLoading(false);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -214,6 +217,39 @@ export function TotpEnrolment() {
             {step.manualEntrySecret}
           </p>
         </details>
+        {/* Setting up on the same phone that would do the scanning
+            has no camera free to scan with - a tappable otpauth://
+            link, which most authenticator apps register as their own
+            handler, lets that device open the app directly instead.
+            target="_blank" is required, not cosmetic: a same-tab
+            top-level navigation to an unregistered custom scheme
+            leaves this page's own navigation context stuck (confirmed
+            live - Chrome logs "Failed to launch '...' because the
+            scheme does not have a registered handler" and the page's
+            own subsequent fetch calls, e.g. signing out, silently
+            never resolve). Opening in a new context means a failed
+            launch only ever affects that discarded context, never
+            this page. rel="noopener" is required alongside target=
+            "_blank" per the standard reverse-tabnabbing mitigation -
+            not that a custom-scheme link exposes window.opener to
+            anything meaningfully exploitable here, but there is no
+            reason to omit it. */}
+        <a
+          href={step.otpauthUri}
+          target="_blank"
+          rel="noopener"
+          className="min-h-[var(--touch-target-size)] text-sm font-medium text-foreground underline decoration-muted underline-offset-4 transition-colors hover:decoration-foreground"
+        >
+          Setting up on this device? Open in your authenticator app
+        </a>
+        <button
+          type="button"
+          onClick={() => startEnrolment()}
+          disabled={isLoading}
+          className="min-h-[var(--touch-target-size)] cursor-pointer self-start text-sm font-medium text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Start over with a new QR code
+        </button>
       </div>
 
       <div className="flex flex-col gap-3">

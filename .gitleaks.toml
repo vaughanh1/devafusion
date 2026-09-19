@@ -37,7 +37,15 @@ paths = [
 # never a real key, never used against anything real - but its base64
 # shape matches gitleaks's generic-api-key pattern, same as the
 # LighthouseCI fixture above.
+# generic-api-key false positive: pipelines/ci/web.yml's VisualRegression
+# job sets the same class of throwaway base64 fixture value for
+# MFA_ENCRYPTION_KEY, needed only because proxy.ts now calls
+# auth.api.getSession() on every non-exempt request (including the home
+# page this job's baseline covers), reaching auth.ts's module-level
+# betterAuth() call. This job has no real Postgres fixture and never
+# exercises MFA - never a real key, never used against anything real.
 regexes = [
   '''bGlnaHRob3VzZS1jaS1maXh0dXJlLW1mYS1rZXktMzI=''',
   '''ZTJlLWNpLWZpeHR1cmUtbWZhLWtleS0zMi1ieXRlcyE=''',
+  '''dmlzdWFsLXJlZ3Jlc3Npb24tY2ktZml4dHVyZS1rZXktMzI=''',
 ]

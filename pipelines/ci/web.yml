@@ -464,6 +464,21 @@ stages:
             env:
               CI: "true"
               PLAYWRIGHT_BROWSER_TARGET: $(PLAYWRIGHT_BROWSER_TARGET)
+              # proxy.ts now calls auth.api.getSession() on every
+              # non-exempt request, including "/" - the only page this
+              # job's committed baseline covers - so Better Auth's
+              # module-load-time validateSecret() is now reached here
+              # too, throwing BetterAuthError and hanging the webServer
+              # boot without this. Same throwaway fixture rationale and
+              # values as the E2ETests/LighthouseCI jobs' identical env
+              # vars above; this job has no real Postgres fixture
+              # (ADR-0014's baseline never mounts anything DB-backed),
+              # so DATABASE_URL is deliberately not set here.
+              BETTER_AUTH_SECRET: "visual-regression-ci-fixture-better-auth-secret-32c"
+              BETTER_AUTH_URL: "http://127.0.0.1:3000"
+              MFA_ENCRYPTION_KEY: "dmlzdWFsLXJlZ3Jlc3Npb24tY2ktZml4dHVyZS1rZXktMzI="
+              TURNSTILE_SECRET_KEY: "1x0000000000000000000000000000000AA"
+              FORM_TIMING_TOKEN_SECRET: "visual-regression-ci-fixture-form-timing-key"
 
           - task: PublishTestResults@2
             displayName: Publish visual regression results
