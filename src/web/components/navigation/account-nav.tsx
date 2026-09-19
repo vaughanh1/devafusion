@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { authClient } from "@/features/auth/auth-client";
 
@@ -21,6 +21,24 @@ export function AccountNav() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const hadSession = useRef(false);
+
+  // This component lives in the root layout, so it is never unmounted
+  // across a client-side navigation (log out -> /log-in -> log back
+  // in all reuse the same instance) - isLoggingOut would otherwise
+  // stay stuck at true forever after a real sign-out, since nothing
+  // ever set it back to false. Reset it specifically on the
+  // false -> true transition of session presence (a genuine fresh
+  // login), not on every render where session is already truthy -
+  // that would defeat the loading state mid-sign-out, since session
+  // itself briefly stays stale/truthy for a moment before
+  // authClient's $sessionSignal listener catches up.
+  useEffect(() => {
+    if (session && !hadSession.current) {
+      setIsLoggingOut(false);
+    }
+    hadSession.current = !!session;
+  }, [session]);
 
   if (isPending) {
     // Reserves the same footprint as either rendered state so the
