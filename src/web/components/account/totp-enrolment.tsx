@@ -16,6 +16,7 @@ type EnrolmentStep =
   | {
       stage: "scanning";
       qrCodeDataUri: string;
+      otpauthUri: string;
       manualEntrySecret: string;
       backupCodes: string[];
     }
@@ -85,9 +86,11 @@ export function TotpEnrolment() {
       setStep({
         stage: "scanning",
         qrCodeDataUri: body.qrCodeDataUri,
+        otpauthUri: body.otpauthUri,
         manualEntrySecret: body.manualEntrySecret,
         backupCodes: body.backupCodes,
       });
+      setConfirmCode("");
       setIsLoading(false);
     } catch {
       setError("Something went wrong. Please try again.");
@@ -214,6 +217,27 @@ export function TotpEnrolment() {
             {step.manualEntrySecret}
           </p>
         </details>
+        {/* Setting up on the same phone that would do the scanning
+            has no camera free to scan with - a tappable otpauth://
+            link, which most authenticator apps register as their own
+            handler, lets that device open the app directly instead.
+            A plain <a>, not an onClick redirect: if no app claims the
+            scheme on a given device, this degrades to a harmless
+            inert link rather than a broken navigation. */}
+        <a
+          href={step.otpauthUri}
+          className="min-h-[var(--touch-target-size)] text-sm font-medium text-foreground underline decoration-muted underline-offset-4 transition-colors hover:decoration-foreground"
+        >
+          Setting up on this device? Open in your authenticator app
+        </a>
+        <button
+          type="button"
+          onClick={() => startEnrolment()}
+          disabled={isLoading}
+          className="min-h-[var(--touch-target-size)] cursor-pointer self-start text-sm font-medium text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Start over with a new QR code
+        </button>
       </div>
 
       <div className="flex flex-col gap-3">
