@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import {
   clearCookie,
@@ -6,6 +7,7 @@ import {
   isA11yTarget,
   isA11yTheme,
   readCookie,
+  ThemeSelector,
   writeCookie,
 } from "@/components/theme/theme-selector";
 
@@ -79,5 +81,48 @@ describe("cookie string parsing", () => {
     clearCookie("devafusion-a11y-theme");
 
     expect(readCookie("devafusion-a11y-theme")).toBeNull();
+  });
+});
+
+// Regression coverage for a real WCAG 2.2 SC 4.1.2 (Name, Role, Value)
+// gap: this control used to be a native <details>/<summary> with no
+// way to flip its own trigger's visible label the way
+// main-navigation.tsx's mobile menu button already does ("Menu" ->
+// "Close"). Confirms the same pattern now applies here too.
+describe("ThemeSelector open/close control", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows 'Accessibility' collapsed, with aria-expanded false", () => {
+    render(<ThemeSelector />);
+
+    const trigger = screen.getByRole("button", { name: "Accessibility" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("flips to 'Close' and aria-expanded true once opened, and back again", () => {
+    render(<ThemeSelector />);
+
+    const trigger = screen.getByRole("button", { name: "Accessibility" });
+    fireEvent.click(trigger);
+
+    const closeTrigger = screen.getByRole("button", { name: "Close" });
+    expect(closeTrigger).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(closeTrigger);
+
+    expect(
+      screen.getByRole("button", { name: "Accessibility" }),
+    ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("links to the /accessibility explainer page once opened", () => {
+    render(<ThemeSelector />);
+    fireEvent.click(screen.getByRole("button", { name: "Accessibility" }));
+
+    expect(
+      screen.getByRole("link", { name: /learn what these do/i }),
+    ).toHaveAttribute("href", "/accessibility");
   });
 });

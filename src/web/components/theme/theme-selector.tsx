@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import Link from "next/link";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 type A11yTheme = "obsidian" | "editorial" | "tactical";
 type A11yScale = "normal" | "large" | "accessible-xl";
@@ -92,6 +93,17 @@ function getServerSnapshot() {
 }
 
 export function ThemeSelector() {
+  // Controlled open/close state, not a native <details>/<summary> -
+  // <details> has no way to flip its own trigger's visible label
+  // between an "open" and "closed" phrasing (main-navigation.tsx's
+  // mobile menu button already does this: "Menu" -> "Close"), so a
+  // screen reader/sighted user had no textual confirmation this
+  // control's own state had changed, only <details>'s native
+  // open/closed role announcement. aria-expanded + a label that
+  // actually changes closes that WCAG 2.2 SC 4.1.2 (Name, Role,
+  // Value) gap.
+  const [isOpen, setIsOpen] = useState(false);
+
   const storedTheme = useSyncExternalStore(
     subscribe,
     getThemeSnapshot,
@@ -141,12 +153,21 @@ export function ThemeSelector() {
   }, []);
 
   return (
-    <details className="relative text-sm">
-      <summary className="min-h-[var(--touch-target-size)] list-none inline-flex cursor-pointer items-center border border-surface-border px-3 text-xs font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
-        Theme
-      </summary>
+    <div className="relative text-sm">
+      <button
+        type="button"
+        aria-expanded={isOpen}
+        aria-controls="a11y-panel"
+        onClick={() => setIsOpen((open) => !open)}
+        className="min-h-[var(--touch-target-size)] inline-flex cursor-pointer items-center border border-surface-border px-3 text-xs font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        {isOpen ? "Close" : "Accessibility"}
+      </button>
 
-      <div className="absolute right-0 bottom-full z-10 mb-2 flex w-max flex-col gap-3 border border-surface-border bg-surface p-3 shadow-lg">
+      <div
+        id="a11y-panel"
+        className={`${isOpen ? "flex" : "hidden"} absolute right-0 bottom-full z-10 mb-2 w-max flex-col gap-3 border border-surface-border bg-surface p-3 shadow-lg`}
+      >
       <fieldset className="flex items-center gap-2">
         <legend className="sr-only">Colour theme</legend>
         {THEME_OPTIONS.map((option) => (
@@ -193,8 +214,17 @@ export function ThemeSelector() {
         ))}
       </fieldset>
 
-      <fieldset className="flex items-center gap-2">
+      <fieldset className="flex flex-col gap-2">
         <legend className="sr-only">Touch target size (WCAG conformance level)</legend>
+        {/* Visible, not sr-only - directly answers "what does AAA mean
+            vs Accessible XL": AAA here only enlarges buttons/links, it
+            does not touch colour or text size, which are the two
+            fieldsets above this one. */}
+        <p className="text-xs text-muted">
+          AAA enlarges buttons and links only — colour and text size are
+          set separately, above.
+        </p>
+        <div className="flex items-center gap-2">
         {TARGET_OPTIONS.map((option) => (
           <button
             key={option.value}
@@ -210,8 +240,16 @@ export function ThemeSelector() {
             {option.label}
           </button>
         ))}
+        </div>
       </fieldset>
+
+      <Link
+        href="/accessibility"
+        className="text-xs font-medium text-foreground underline decoration-muted underline-offset-4 transition-colors hover:decoration-foreground"
+      >
+        Learn what these do →
+      </Link>
       </div>
-    </details>
+    </div>
   );
 }

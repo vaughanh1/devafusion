@@ -234,6 +234,18 @@ export default function LegalPage() {
             made smaller by your own preference, even though every other
             control on the site respects it.
           </p>
+          <p className="mt-2">
+            See the{" "}
+            <Link
+              href="/accessibility"
+              className="underline hover:text-foreground"
+            >
+              accessibility page
+            </Link>{" "}
+            for a full explanation of these options, how each maps to WCAG
+            2.2, and an honest account of where this site does and does not
+            yet meet the strictest (AAA) level.
+          </p>
         </div>
 
         <div>

@@ -10,17 +10,31 @@ export function SiteFooter() {
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
           <p>© {new Date().getFullYear()} Devafusion.</p>
 
-          <Link
-            href="/legal"
-            // flex + min-h-[var(--touch-target-size)]: a bare text-sm link with no vertical
-            // padding renders well under the 44px CSS-pixel touch-
-            // target minimum this project holds every interactive
-            // control to - same fix as main-navigation.tsx's desktop
-            // links.
-            className="flex min-h-[var(--touch-target-size)] items-center text-sm text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            Privacy & cookies
-          </Link>
+          {/* A labelled group, not two more standalone top-level links -
+              this is where a future compliance/legal page (terms,
+              cookie preferences, etc.) should be added too, rather than
+              growing the main nav or the ThemeSelector panel. Both
+              links share the exact same underline treatment so neither
+              looks more or less important than the other. */}
+          <nav aria-label="Legal" className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
+            <Link
+              href="/legal"
+              // flex + min-h-[var(--touch-target-size)]: a bare text-sm link with no vertical
+              // padding renders well under the 44px CSS-pixel touch-
+              // target minimum this project holds every interactive
+              // control to - same fix as main-navigation.tsx's desktop
+              // links.
+              className="flex min-h-[var(--touch-target-size)] items-center text-sm text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Privacy & cookies
+            </Link>
+            <Link
+              href="/accessibility"
+              className="flex min-h-[var(--touch-target-size)] items-center text-sm text-muted underline decoration-muted underline-offset-4 transition-colors hover:text-foreground hover:decoration-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            >
+              Accessibility
+            </Link>
+          </nav>
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">

@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 
 import { TotpEnrolment } from "@/components/account/totp-enrolment";
 import { FormError } from "@/components/auth/form-error";
+import { PasswordField } from "@/components/auth/password-field";
 
 type FactorOption = "totp" | "email" | "none";
 
@@ -177,26 +178,17 @@ export function MfaSettingsDashboard() {
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor={passwordId}
-          className="text-sm font-medium text-foreground"
-        >
-          Confirm your password to save
-        </label>
-        <input
-          id={passwordId}
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          aria-describedby={error ? errorId : undefined}
-          aria-invalid={!!error}
-          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        />
-      </div>
+      <PasswordField
+        id={passwordId}
+        label="Confirm your password to save"
+        name="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={setPassword}
+        describedBy={error ? errorId : undefined}
+        isInvalid={!!error}
+      />
 
       <button
         type="submit"
