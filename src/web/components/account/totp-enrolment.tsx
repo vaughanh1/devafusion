@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useId, useState } from "react";
 
 import { FormError } from "@/components/auth/form-error";
+import { PasswordField } from "@/components/auth/password-field";
 
 type EnrolmentStep =
   | { stage: "idle" }
@@ -152,23 +153,16 @@ export function TotpEnrolment() {
           to replace it - useful if you&apos;ve lost access to the current
           one.
         </p>
-        <label
-          htmlFor={reenrolPasswordId}
-          className="text-sm font-medium text-foreground"
-        >
-          Current password
-        </label>
-        <input
+        <PasswordField
           id={reenrolPasswordId}
-          type="password"
+          label="Current password"
           name="reenrolPassword"
           autoComplete="current-password"
           required
           value={reenrolPassword}
-          onChange={(event) => setReenrolPassword(event.target.value)}
-          aria-describedby={error ? errorId : undefined}
-          aria-invalid={!!error}
-          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          onChange={setReenrolPassword}
+          describedBy={error ? errorId : undefined}
+          isInvalid={!!error}
         />
         <button
           type="button"

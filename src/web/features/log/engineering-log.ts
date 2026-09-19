@@ -59,6 +59,7 @@ import { entry as accessibilityTargetWcag22 } from "./entries/accessibility-targ
 import { entry as mfaEncryptionKeyLengthIncident } from "./entries/mfa-encryption-key-length-incident";
 import { entry as mandatoryMfaSetupAndAppServiceLogging } from "./entries/mandatory-mfa-setup-and-app-service-logging";
 import { entry as accountNavStuckLoggingOutAfterRelogin } from "./entries/account-nav-stuck-logging-out-after-relogin";
+import { entry as accessibilityAaaAuditAndExplainerPage } from "./entries/accessibility-aaa-audit-and-explainer-page";
 
 export type { LogEntry } from "./types";
 
@@ -128,6 +129,7 @@ const allEntries = [
   mfaEncryptionKeyLengthIncident,
   mandatoryMfaSetupAndAppServiceLogging,
   accountNavStuckLoggingOutAfterRelogin,
+  accessibilityAaaAuditAndExplainerPage,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

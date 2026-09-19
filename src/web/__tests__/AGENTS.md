@@ -110,23 +110,56 @@ DevOps "Run Pipeline" variables panel without a commit to `develop`:
   to a spec that runs in the default `chromium` project on the bare
   hosted agent, and never commit a baseline PNG rendered on a local OS
   outside that container.
-- **Baseline bootstrap:** a brand-new `toHaveScreenshot()` assertion has
-  no committed baseline yet, so its first run fails with a "snapshot
-  doesn't exist" diff — expected, not a regression. Generate it from
-  `src/web` with Docker installed:
+- **Baseline bootstrap / any local visual-regression run — build INSIDE
+  the container, never `npm run build` on the host first.** This was
+  gotten wrong twice in one session before being fixed here: running
+  `npm run build` on Windows then mounting the result into the Linux
+  container fails with `Cannot find package 'pg-<hash>'` — Next.js
+  embeds a content hash for each native dependency (`pg`, `pg-native`,
+  etc.) at build time, and that hash is platform-specific; a
+  Windows-built `.next/standalone` bundle can never resolve against the
+  container's own `node_modules`, no matter what gets reinstalled
+  afterwards. Anonymous-volume-mounting `node_modules` (`-v
+  /work/node_modules`) across two *separate* `docker run` invocations is
+  an equally real trap: the second run starts from an empty anonymous
+  volume, not the first run's now-discarded one, so a "just install then
+  test in a second step" split silently loses the entire dependency
+  tree and fails with `Cannot find module '@playwright/test'`. The only
+  reliable command is one single `docker run` doing `npm ci`, the
+  build, the standalone static/public copy, AND the test run together,
+  every step inside the same container:
   ```
-  npm run build
-  cp -R .next/static .next/standalone/.next/static
-  cp -R public .next/standalone/public
-  docker run --rm --ipc=host -e CI=true -v ${PWD}:/work -v /work/node_modules -w /work \
+  docker run --rm --ipc=host \
+    -e CI=true \
+    -e NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA \
+    -e BETTER_AUTH_SECRET=visual-regression-ci-fixture-better-auth-secret-32c \
+    -e BETTER_AUTH_URL=http://127.0.0.1:3000 \
+    -e MFA_ENCRYPTION_KEY=dmlzdWFsLXJlZ3Jlc3Npb24tY2ktZml4dHVyZS1rZXktMzI= \
+    -e TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA \
+    -e FORM_TIMING_TOKEN_SECRET=visual-regression-ci-fixture-form-timing-key \
+    -v ${PWD}:/work -v /work/node_modules -w /work \
     mcr.microsoft.com/playwright:v1.62.1-noble \
-    bash -c "npm ci && npx playwright test --grep @visual --update-snapshots"
+    bash -c "npm ci && npm run build && cp -R .next/static .next/standalone/.next/static && cp -R public .next/standalone/public && npx playwright test --grep @visual"
   ```
-  then commit the resulting PNG under `tests-e2e/__screenshots__/`. If
-  Docker isn't available locally, the `VisualRegression` CI job
-  publishes the Docker-rendered PNG as the
-  `visual-regression-baseline-candidates` pipeline artifact on failure —
-  download and commit that instead of a locally-rendered substitute.
+  (add `--update-snapshots` to the final `playwright test` call only
+  when deliberately creating/replacing a baseline, never for a plain
+  regression check). The five `-e` env vars above are the exact
+  fixture values `pipelines/ci/web.yml`'s `VisualRegression` job itself
+  uses — required because `proxy.ts` calls `auth.api.getSession()` on
+  every request, reaching `auth.ts`'s module-load-time `betterAuth(...)`
+  call, which throws `BetterAuthError`/hangs `webServer` startup without
+  `BETTER_AUTH_SECRET` set; omitting them produces a
+  `Timed out waiting 120000ms from config.webServer` failure that looks
+  unrelated to the real cause. A `[WebServer] ... ECONNREFUSED
+  127.0.0.1:5432` warning is expected noise, not a failure — this job
+  has no real Postgres fixture (ADR-0014, the baseline only covers the
+  DB-independent home page); only the final `X passed`/`X failed` count
+  from the actual Playwright assertion matters. On success, commit the
+  resulting PNG under `tests-e2e/__screenshots__/`. If Docker isn't
+  available locally, the `VisualRegression` CI job publishes the
+  Docker-rendered PNG as the `visual-regression-baseline-candidates`
+  pipeline artifact on failure — download and commit that instead of a
+  locally-rendered substitute.
 - **Accessibility audits (`@a11y` tag)** — `accessibility.spec.ts` runs
   `@axe-core/playwright` against every audited route and asserts zero
   WCAG 2.2 AA violations (2.2 is a strict superset of 2.0/2.1, so the

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 import { FormError } from "@/components/auth/form-error";
+import { PasswordField } from "@/components/auth/password-field";
 import { authClient } from "@/features/auth/auth-client";
 
 const CONFIRMATION_PHRASE = "delete my account";
@@ -58,26 +59,17 @@ export function DeleteAccountForm() {
     <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-6">
       {error && <FormError id={errorId} message={error} />}
 
-      <div className="flex flex-col gap-2">
-        <label
-          htmlFor={passwordId}
-          className="text-sm font-medium text-foreground"
-        >
-          Password
-        </label>
-        <input
-          id={passwordId}
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          aria-describedby={error ? errorId : undefined}
-          aria-invalid={!!error}
-          className="min-h-[var(--touch-target-size)] border border-surface-border bg-background px-3 text-base text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        />
-      </div>
+      <PasswordField
+        id={passwordId}
+        label="Password"
+        name="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={setPassword}
+        describedBy={error ? errorId : undefined}
+        isInvalid={!!error}
+      />
 
       <div className="flex flex-col gap-2">
         <label

@@ -13,6 +13,7 @@ describe("sitemap", () => {
       expect.arrayContaining([
         "https://devafusion.net",
         "https://devafusion.net/about",
+        "https://devafusion.net/accessibility",
         "https://devafusion.net/projects",
         "https://devafusion.net/experiments",
         "https://devafusion.net/contact",
