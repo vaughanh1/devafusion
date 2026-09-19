@@ -56,6 +56,8 @@ import { entry as keyboardOnlyNavigationE2e } from "./entries/keyboard-only-navi
 import { entry as touchTargetAndContrastAudit } from "./entries/touch-target-and-contrast-audit";
 import { entry as accessibilityChecklistToolingGaps } from "./entries/accessibility-checklist-tooling-gaps";
 import { entry as accessibilityTargetWcag22 } from "./entries/accessibility-target-wcag-2-2";
+import { entry as mfaEncryptionKeyLengthIncident } from "./entries/mfa-encryption-key-length-incident";
+import { entry as mandatoryMfaSetupAndAppServiceLogging } from "./entries/mandatory-mfa-setup-and-app-service-logging";
 
 export type { LogEntry } from "./types";
 
@@ -122,6 +124,8 @@ const allEntries = [
   touchTargetAndContrastAudit,
   accessibilityChecklistToolingGaps,
   accessibilityTargetWcag22,
+  mfaEncryptionKeyLengthIncident,
+  mandatoryMfaSetupAndAppServiceLogging,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
