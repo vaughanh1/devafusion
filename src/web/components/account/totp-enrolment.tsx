@@ -221,11 +221,23 @@ export function TotpEnrolment() {
             has no camera free to scan with - a tappable otpauth://
             link, which most authenticator apps register as their own
             handler, lets that device open the app directly instead.
-            A plain <a>, not an onClick redirect: if no app claims the
-            scheme on a given device, this degrades to a harmless
-            inert link rather than a broken navigation. */}
+            target="_blank" is required, not cosmetic: a same-tab
+            top-level navigation to an unregistered custom scheme
+            leaves this page's own navigation context stuck (confirmed
+            live - Chrome logs "Failed to launch '...' because the
+            scheme does not have a registered handler" and the page's
+            own subsequent fetch calls, e.g. signing out, silently
+            never resolve). Opening in a new context means a failed
+            launch only ever affects that discarded context, never
+            this page. rel="noopener" is required alongside target=
+            "_blank" per the standard reverse-tabnabbing mitigation -
+            not that a custom-scheme link exposes window.opener to
+            anything meaningfully exploitable here, but there is no
+            reason to omit it. */}
         <a
           href={step.otpauthUri}
+          target="_blank"
+          rel="noopener"
           className="min-h-[var(--touch-target-size)] text-sm font-medium text-foreground underline decoration-muted underline-offset-4 transition-colors hover:decoration-foreground"
         >
           Setting up on this device? Open in your authenticator app
