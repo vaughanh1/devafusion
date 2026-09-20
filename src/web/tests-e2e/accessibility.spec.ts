@@ -58,7 +58,7 @@ import { expect, test } from "@playwright/test";
 // escape hatch are still verified manually below (SC 2.5.5 has no
 // axe-core rule at all, at any tag/options setting), not by this
 // rule.
-const auditedRoutes = ["/", "/projects", "/log", "/sign-up", "/log-in"];
+const auditedRoutes = ["/", "/projects", "/log", "/sign-up", "/log-in", "/tech-stack"];
 
 test.describe("accessibility @a11y", () => {
   for (const route of auditedRoutes) {

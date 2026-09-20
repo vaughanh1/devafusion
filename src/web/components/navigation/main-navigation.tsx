@@ -8,6 +8,7 @@ const navigationItems = [
   { href: "/experiments", label: "Experiments" },
   { href: "/projects", label: "Projects" },
   { href: "/log", label: "Log" },
+  { href: "/tech-stack", label: "Tech Stack" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
 ];

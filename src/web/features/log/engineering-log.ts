@@ -61,6 +61,7 @@ import { entry as mandatoryMfaSetupAndAppServiceLogging } from "./entries/mandat
 import { entry as accountNavStuckLoggingOutAfterRelogin } from "./entries/account-nav-stuck-logging-out-after-relogin";
 import { entry as accessibilityAaaAuditAndExplainerPage } from "./entries/accessibility-aaa-audit-and-explainer-page";
 import { entry as mfaAccountStateConsistency } from "./entries/mfa-account-state-consistency";
+import { entry as techStackPage } from "./entries/tech-stack-page";
 
 export type { LogEntry } from "./types";
 
@@ -132,6 +133,7 @@ const allEntries = [
   accountNavStuckLoggingOutAfterRelogin,
   accessibilityAaaAuditAndExplainerPage,
   mfaAccountStateConsistency,
+  techStackPage,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

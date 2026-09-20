@@ -19,6 +19,7 @@ describe("sitemap", () => {
         "https://devafusion.net/contact",
         "https://devafusion.net/legal",
         "https://devafusion.net/log",
+        "https://devafusion.net/tech-stack",
       ]),
     );
     expect(new Set(paths).size).toBe(paths.length);
