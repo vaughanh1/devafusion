@@ -58,7 +58,11 @@ export default async function MfaSetupPage() {
         this is saved.
       </p>
 
-      <MfaSettingsDashboard />
+      <MfaSettingsDashboard
+        initialRequiredFactors={security?.requiredFactors}
+        initialMfaFrequency={security?.mfaFrequency}
+        initialTotpConfirmed={security?.twoFactorEnabled ?? false}
+      />
     </section>
   );
 }

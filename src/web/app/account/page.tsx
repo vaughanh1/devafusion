@@ -6,6 +6,9 @@ import { auth } from "@/auth";
 import { DeleteAccountForm } from "@/app/account/delete-account-form";
 import { ExportDataButton } from "@/app/account/export-data-button";
 import { MfaSettingsDashboard } from "@/components/account/mfa-settings-dashboard";
+import { DrizzleUserSecurityRepository } from "@/features/auth/mfa/drizzle-user-security-repository";
+
+const userSecurityRepository = new DrizzleUserSecurityRepository();
 
 export const metadata: Metadata = {
   title: "Your account",
@@ -27,6 +30,17 @@ export default async function AccountPage() {
   if (!session) {
     redirect("/log-in?redirect=%2Faccount");
   }
+
+  // Real bug found live: MfaSettingsDashboard previously always
+  // mounted with hardcoded defaults (selectedFactor "totp",
+  // mfaFrequency "always") regardless of what was actually saved -
+  // every visit to this page looked identically unconfigured, no
+  // matter what the account's real requiredFactors/mfaFrequency were.
+  // Fetched server-side here (Server-First convention, src/web/
+  // AGENTS.md) since this page is already per-user/dynamic (the
+  // redirect above already forces that), unlike AccountNav's
+  // client-side session read.
+  const security = await userSecurityRepository.findByUserId(session.user.id);
 
   return (
     <section className="mx-auto max-w-2xl px-6 py-20">
@@ -57,7 +71,11 @@ export default async function AccountPage() {
           Choose the second factor required at sign-in and how often it is
           re-challenged.
         </p>
-        <MfaSettingsDashboard />
+        <MfaSettingsDashboard
+          initialRequiredFactors={security?.requiredFactors}
+          initialMfaFrequency={security?.mfaFrequency}
+          initialTotpConfirmed={security?.twoFactorEnabled ?? false}
+        />
       </div>
 
       <div className="mt-12 border-t border-surface-border pt-10">

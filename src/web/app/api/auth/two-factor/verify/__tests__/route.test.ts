@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const {
   consumeRateLimitMock,
   findByUserIdMock,
+  setMfaFrequencyMock,
   findUnusedByUserIdMock,
   markUsedMock,
   createTrustedDeviceMock,
@@ -13,6 +14,7 @@ const {
 } = vi.hoisted(() => ({
   consumeRateLimitMock: vi.fn(),
   findByUserIdMock: vi.fn(),
+  setMfaFrequencyMock: vi.fn(),
   findUnusedByUserIdMock: vi.fn(),
   markUsedMock: vi.fn(),
   createTrustedDeviceMock: vi.fn(),
@@ -29,6 +31,7 @@ vi.mock("@/features/auth/rate-limit", () => ({
 vi.mock("@/features/auth/mfa/drizzle-user-security-repository", () => ({
   DrizzleUserSecurityRepository: class {
     findByUserId = findByUserIdMock;
+    setMfaFrequency = setMfaFrequencyMock;
   },
 }));
 
@@ -87,6 +90,7 @@ describe("POST /api/auth/two-factor/verify", () => {
   afterEach(() => {
     consumeRateLimitMock.mockReset();
     findByUserIdMock.mockReset();
+    setMfaFrequencyMock.mockReset();
     findUnusedByUserIdMock.mockReset();
     markUsedMock.mockReset();
     createTrustedDeviceMock.mockReset();
@@ -303,6 +307,30 @@ describe("POST /api/auth/two-factor/verify", () => {
       expect.objectContaining({ userId: "u1", deviceLabel: "test-agent" }),
     );
     expect(response.headers.get("set-cookie")).toContain("devafusion-trusted-device=");
+    // Regression test for a real, reported lockout: checking "trust
+    // this device" here created a genuinely valid trusted_devices
+    // row, but login-step1.ts only ever consults it when
+    // user_security.mfa_frequency is '30_days' - this call was
+    // previously missing entirely, so the row was silently ignored
+    // on every subsequent login.
+    expect(setMfaFrequencyMock).toHaveBeenCalledWith("u1", "30_days");
+  });
+
+  it("does NOT touch mfa_frequency when trustDevice is not set", async () => {
+    consumeRateLimitMock.mockResolvedValue({ allowed: true });
+    getMfaSessionMock.mockReturnValue(
+      buildState({ remainingFactors: ["email"], currentFactorExpectedCode: "123456" }),
+    );
+
+    await POST(
+      buildRequest({
+        pendingToken: "t1",
+        code: "123456",
+        factorType: "email",
+      }),
+    );
+
+    expect(setMfaFrequencyMock).not.toHaveBeenCalled();
   });
 
   it("returns 500 when an unexpected error is thrown", async () => {

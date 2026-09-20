@@ -23,6 +23,24 @@ type EnrolmentStep =
     }
   | { stage: "confirmed" };
 
+type TotpEnrolmentProps = {
+  // Real, reported lockout closed by this callback: nothing
+  // previously told MfaSettingsDashboard when a genuine confirmation
+  // actually happened, so its own Save button had no way to know
+  // TOTP was really ready - a user could select "Authenticator App"
+  // and save it before ever confirming a code, with no working
+  // secret behind the resulting requiredFactors entry.
+  onConfirmed?: () => void;
+  // Fires whenever a fresh secret is issued (first enrolment attempt
+  // OR "Start over with a new QR code") - mirrors /api/auth/two-
+  // factor/enrol's own server-side behaviour of flipping
+  // twoFactorEnabled back to false the moment a new, as-yet-unproven
+  // secret replaces the old one (see that route's own comment), so
+  // MfaSettingsDashboard's local totpConfirmed state never drifts
+  // out of sync with what the server actually has stored.
+  onEnrolmentStarted?: () => void;
+};
+
 // 12-character alphanumeric backup codes have no natural numeric-
 // grouping convention (unlike the 6-digit TOTP/email codes -
 // format-otp-for-accessibility.ts) - they are already an
@@ -31,7 +49,10 @@ type EnrolmentStep =
 // here; each is simply rendered on its own line/list item so a
 // screen reader announces them one at a time rather than as one
 // run-on sentence.
-export function TotpEnrolment() {
+export function TotpEnrolment({
+  onConfirmed,
+  onEnrolmentStarted,
+}: TotpEnrolmentProps) {
   const codeId = useId();
   const errorId = useId();
   const reenrolPasswordId = useId();
@@ -84,6 +105,7 @@ export function TotpEnrolment() {
       }
 
       const body = await response.json();
+      onEnrolmentStarted?.();
       setStep({
         stage: "scanning",
         qrCodeDataUri: body.qrCodeDataUri,
@@ -119,6 +141,7 @@ export function TotpEnrolment() {
 
       setStep({ stage: "confirmed" });
       setIsLoading(false);
+      onConfirmed?.();
     } catch {
       setError("Something went wrong. Please try again.");
       setIsLoading(false);

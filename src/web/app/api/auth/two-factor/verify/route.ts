@@ -236,6 +236,20 @@ export async function POST(request: Request) {
         expiresAt,
       });
 
+      // Real bug found live: this route created a genuinely valid
+      // trusted_devices row, but login-step1.ts only ever consults
+      // that table when user_security.mfa_frequency is '30_days' -
+      // checking this box never set that column, so the row it just
+      // created was silently ignored on every future login (the
+      // exact "no record was made" symptom reported, even though a
+      // record genuinely was created). Setting it here mirrors what
+      // /api/user/security/settings already does when a user picks
+      // "Trust this device for 30 days" from the Account page -
+      // checking the box at challenge time is the same explicit
+      // statement of intent and must have the same effect, not a
+      // second, disconnected mechanism.
+      await userSecurityRepository.setMfaFrequency(state.userId, "30_days");
+
       response.cookies.set(TRUSTED_DEVICE_COOKIE_NAME, trustedDeviceId, {
         httpOnly: true,
         secure: true,

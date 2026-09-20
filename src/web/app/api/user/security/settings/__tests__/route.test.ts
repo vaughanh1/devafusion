@@ -4,6 +4,7 @@ const {
   consumeRateLimitMock,
   getSessionMock,
   verifyPasswordMock,
+  findByUserIdMock,
   setRequiredFactorsMock,
   setMfaFrequencyMock,
   setTwoFactorEnabledMock,
@@ -14,6 +15,7 @@ const {
   consumeRateLimitMock: vi.fn(),
   getSessionMock: vi.fn(),
   verifyPasswordMock: vi.fn(),
+  findByUserIdMock: vi.fn(),
   setRequiredFactorsMock: vi.fn(),
   setMfaFrequencyMock: vi.fn(),
   setTwoFactorEnabledMock: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock("next/headers", () => ({
 
 vi.mock("@/features/auth/mfa/drizzle-user-security-repository", () => ({
   DrizzleUserSecurityRepository: class {
+    findByUserId = findByUserIdMock;
     setRequiredFactors = setRequiredFactorsMock;
     setMfaFrequency = setMfaFrequencyMock;
     setTwoFactorEnabled = setTwoFactorEnabledMock;
@@ -79,6 +82,7 @@ describe("POST /api/user/security/settings", () => {
     consumeRateLimitMock.mockReset();
     getSessionMock.mockReset();
     verifyPasswordMock.mockReset();
+    findByUserIdMock.mockReset();
     setRequiredFactorsMock.mockReset();
     setMfaFrequencyMock.mockReset();
     setTwoFactorEnabledMock.mockReset();
@@ -135,6 +139,7 @@ describe("POST /api/user/security/settings", () => {
   it("returns 401 when the password is incorrect", async () => {
     consumeRateLimitMock.mockResolvedValue({ allowed: true });
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    findByUserIdMock.mockResolvedValue({ twoFactorEnabled: true });
     verifyPasswordMock.mockRejectedValue(new Error("wrong password"));
 
     const response = await POST(buildRequest(validBody));
@@ -145,9 +150,66 @@ describe("POST /api/user/security/settings", () => {
     expect(setRequiredFactorsMock).not.toHaveBeenCalled();
   });
 
+  // Regression tests for a real, reported account lockout: nothing
+  // previously stopped a user from saving 'totp' as a required
+  // factor without ever confirming it - login-step1.ts would then
+  // require a factor with no working secret behind it at all.
+  describe("blocks newly requiring 'totp' before it is actually confirmed", () => {
+    it("returns 400 when requiredFactors includes 'totp' and the account has no confirmed TOTP factor at all", async () => {
+      consumeRateLimitMock.mockResolvedValue({ allowed: true });
+      getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+      findByUserIdMock.mockResolvedValue(undefined);
+
+      const response = await POST(buildRequest(validBody));
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toMatch(/finish setting up your authenticator app/i);
+      expect(verifyPasswordMock).not.toHaveBeenCalled();
+      expect(setRequiredFactorsMock).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when requiredFactors includes 'totp' and the existing row has twoFactorEnabled: false", async () => {
+      consumeRateLimitMock.mockResolvedValue({ allowed: true });
+      getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+      findByUserIdMock.mockResolvedValue({ twoFactorEnabled: false });
+
+      const response = await POST(buildRequest(validBody));
+
+      expect(response.status).toBe(400);
+      expect(setRequiredFactorsMock).not.toHaveBeenCalled();
+    });
+
+    it("allows saving when 'totp' is already genuinely confirmed", async () => {
+      consumeRateLimitMock.mockResolvedValue({ allowed: true });
+      getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+      findByUserIdMock.mockResolvedValue({ twoFactorEnabled: true });
+      verifyPasswordMock.mockResolvedValue({ status: true });
+
+      const response = await POST(buildRequest(validBody));
+
+      expect(response.status).toBe(200);
+      expect(setRequiredFactorsMock).toHaveBeenCalledWith("u1", ["password", "totp"]);
+    });
+
+    it("does not check confirmation state at all when 'totp' is not in requiredFactors", async () => {
+      consumeRateLimitMock.mockResolvedValue({ allowed: true });
+      getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+      verifyPasswordMock.mockResolvedValue({ status: true });
+
+      const response = await POST(
+        buildRequest({ ...validBody, requiredFactors: ["password", "email"] }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(findByUserIdMock).not.toHaveBeenCalled();
+    });
+  });
+
   it("updates requiredFactors and mfaFrequency, and records an audit log entry, on success", async () => {
     consumeRateLimitMock.mockResolvedValue({ allowed: true });
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    findByUserIdMock.mockResolvedValue({ twoFactorEnabled: true });
     verifyPasswordMock.mockResolvedValue({ status: true });
 
     const response = await POST(buildRequest(validBody));
@@ -175,6 +237,7 @@ describe("POST /api/user/security/settings", () => {
   it("does not touch the TOTP secret when 'totp' remains in requiredFactors", async () => {
     consumeRateLimitMock.mockResolvedValue({ allowed: true });
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    findByUserIdMock.mockResolvedValue({ twoFactorEnabled: true });
     verifyPasswordMock.mockResolvedValue({ status: true });
 
     await POST(buildRequest(validBody));
@@ -186,6 +249,7 @@ describe("POST /api/user/security/settings", () => {
   it("trusts the current device and sets the trusted-device cookie when mfaFrequency is '30_days'", async () => {
     consumeRateLimitMock.mockResolvedValue({ allowed: true });
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    findByUserIdMock.mockResolvedValue({ twoFactorEnabled: true });
     verifyPasswordMock.mockResolvedValue({ status: true });
 
     const response = await POST(
@@ -203,6 +267,7 @@ describe("POST /api/user/security/settings", () => {
   it("does not trust the current device when mfaFrequency is 'always'", async () => {
     consumeRateLimitMock.mockResolvedValue({ allowed: true });
     getSessionMock.mockResolvedValue({ user: { id: "u1" } });
+    findByUserIdMock.mockResolvedValue({ twoFactorEnabled: true });
     verifyPasswordMock.mockResolvedValue({ status: true });
 
     const response = await POST(buildRequest(validBody));

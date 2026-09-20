@@ -82,6 +82,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // Real, reported account lockout closed by this check: nothing
+    // previously stopped a user from selecting "Authenticator App
+    // (TOTP)" and saving it as a required factor WITHOUT ever
+    // actually confirming it (no secret ever generated/scanned, no
+    // /api/auth/two-factor/confirm call ever succeeded). login-
+    // step1.ts then required 'totp' at every future login with no
+    // working secret behind it - an unrecoverable lockout with no
+    // error shown at save time to explain why. This is TOTP-specific
+    // (not applied to 'email', which needs no prior enrolment - a
+    // fresh code is sent live on every challenge) and only blocks
+    // NEWLY requiring 'totp' - an account that already has it
+    // confirmed can always keep saving other settings, since
+    // twoFactorEnabled would already be true for that case.
+    if (requiredFactors.includes("totp")) {
+      const existing = await userSecurityRepository.findByUserId(
+        session.user.id,
+      );
+      if (!existing?.twoFactorEnabled) {
+        return NextResponse.json(
+          {
+            error:
+              "Finish setting up your authenticator app (scan the code and confirm it below) before selecting it as your second factor.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     try {
       await auth.api.verifyPassword({
         body: { password },

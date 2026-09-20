@@ -5,6 +5,7 @@ import { useId, useRef, useState } from "react";
 
 import { FormError } from "@/components/auth/form-error";
 import { PasswordField } from "@/components/auth/password-field";
+import { ResendVerificationEmailButton } from "@/components/auth/resend-verification-email-button";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
 import type { TurnstileWidgetHandle } from "@/components/auth/turnstile-widget";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
@@ -116,11 +117,17 @@ export function SignUpForm({ redirectPath, formTimingToken }: SignUpFormProps) {
 
   if (needsVerification) {
     return (
-      <p role="status" className="mt-10 text-lg leading-8 text-muted">
-        Account created. Check your inbox at{" "}
-        <span className="font-medium text-foreground">{email}</span> for a
-        verification link before signing in.
-      </p>
+      <div className="mt-10 flex flex-col gap-4">
+        <p role="status" className="text-lg leading-8 text-muted">
+          Account created. Check your inbox at{" "}
+          <span className="font-medium text-foreground">{email}</span> for a
+          verification link before signing in.
+        </p>
+        <p className="text-sm text-muted">
+          Lost or deleted the email? Request a new one below.
+        </p>
+        <ResendVerificationEmailButton email={email} />
+      </div>
     );
   }
 

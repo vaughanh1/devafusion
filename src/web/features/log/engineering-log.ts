@@ -60,6 +60,7 @@ import { entry as mfaEncryptionKeyLengthIncident } from "./entries/mfa-encryptio
 import { entry as mandatoryMfaSetupAndAppServiceLogging } from "./entries/mandatory-mfa-setup-and-app-service-logging";
 import { entry as accountNavStuckLoggingOutAfterRelogin } from "./entries/account-nav-stuck-logging-out-after-relogin";
 import { entry as accessibilityAaaAuditAndExplainerPage } from "./entries/accessibility-aaa-audit-and-explainer-page";
+import { entry as mfaAccountStateConsistency } from "./entries/mfa-account-state-consistency";
 
 export type { LogEntry } from "./types";
 
@@ -130,6 +131,7 @@ const allEntries = [
   mandatoryMfaSetupAndAppServiceLogging,
   accountNavStuckLoggingOutAfterRelogin,
   accessibilityAaaAuditAndExplainerPage,
+  mfaAccountStateConsistency,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
