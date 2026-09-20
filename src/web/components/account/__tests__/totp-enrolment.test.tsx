@@ -181,4 +181,63 @@ describe("TotpEnrolment", () => {
       expect(screen.getByRole("alert")).toHaveTextContent("Invalid or expired code."),
     );
   });
+
+  // Regression tests for a real, reported account lockout
+  // (MfaSettingsDashboard could previously save "totp" as a required
+  // factor before it was ever genuinely confirmed) - these callbacks
+  // are the signal MfaSettingsDashboard relies on to know the real,
+  // server-side confirmation state.
+  describe("onConfirmed / onEnrolmentStarted callbacks", () => {
+    it("calls onEnrolmentStarted when a fresh secret is issued", async () => {
+      stubFetch();
+      fetchMock.mockResolvedValue(
+        jsonResponse(200, {
+          qrCodeDataUri: "data:image/png;base64,abc123",
+          manualEntrySecret: "JBSWY3DPEHPK3PXP",
+          backupCodes: ["AAAA1111BBBB"],
+        }),
+      );
+      const onEnrolmentStarted = vi.fn();
+      render(<TotpEnrolment onEnrolmentStarted={onEnrolmentStarted} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /set up authenticator app/i }));
+      await screen.findByRole("img");
+
+      expect(onEnrolmentStarted).toHaveBeenCalledTimes(1);
+    });
+
+    it("calls onConfirmed only after a genuinely successful confirmation, not on failure", async () => {
+      stubFetch();
+      fetchMock
+        .mockResolvedValueOnce(
+          jsonResponse(200, {
+            qrCodeDataUri: "data:image/png;base64,abc123",
+            manualEntrySecret: "JBSWY3DPEHPK3PXP",
+            backupCodes: ["AAAA1111BBBB"],
+          }),
+        )
+        .mockResolvedValueOnce(jsonResponse(401, { error: "Invalid or expired code." }))
+        .mockResolvedValueOnce(jsonResponse(200, { enabled: true }));
+      const onConfirmed = vi.fn();
+      render(<TotpEnrolment onConfirmed={onConfirmed} />);
+
+      fireEvent.click(screen.getByRole("button", { name: /set up authenticator app/i }));
+      await screen.findByRole("img");
+
+      fireEvent.change(screen.getByLabelText(/enter the 6-digit code/i), {
+        target: { value: "000000" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /confirm and enable/i }));
+      await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+      expect(onConfirmed).not.toHaveBeenCalled();
+
+      fireEvent.change(screen.getByLabelText(/enter the 6-digit code/i), {
+        target: { value: "123456" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /confirm and enable/i }));
+      await screen.findByText(/authenticator app enabled/i);
+
+      expect(onConfirmed).toHaveBeenCalledTimes(1);
+    });
+  });
 });

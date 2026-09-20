@@ -6,6 +6,7 @@ import { useId, useRef, useState } from "react";
 import { FormError } from "@/components/auth/form-error";
 import { MfaChallengeForm } from "@/components/auth/mfa-challenge-form";
 import { PasswordField } from "@/components/auth/password-field";
+import { ResendVerificationEmailButton } from "@/components/auth/resend-verification-email-button";
 import type { TurnstileWidgetHandle } from "@/components/auth/turnstile-widget";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { notifySessionChanged } from "@/features/auth/auth-client";
@@ -36,6 +37,14 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
   const [password, setPassword] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Real production lockout closed by this state: a login-step1 403
+  // (email not verified) previously left the affected user with no
+  // path back in at all if their original verification email was
+  // ever lost - the error text alone gave no way to request a new
+  // one. Tracked separately from the plain error string so only this
+  // specific, resendable case renders the resend control, not every
+  // generic auth failure.
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState<MfaChallengeState | null>(null);
   const turnstileRef = useRef<TurnstileWidgetHandle | null>(null);
@@ -50,6 +59,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setNeedsVerification(false);
     setIsSubmitting(true);
 
     if (!captchaToken) {
@@ -79,6 +89,7 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
             body?.error ??
               "Please verify your email address before signing in.",
           );
+          setNeedsVerification(true);
           setIsSubmitting(false);
           resetCaptcha();
           return;
@@ -131,6 +142,9 @@ export function LogInForm({ redirectPath, formTimingToken }: LogInFormProps) {
   return (
     <form onSubmit={handleSubmit} className="mt-10 flex flex-col gap-6">
       {error && <FormError id={errorId} message={error} />}
+      {needsVerification && (
+        <ResendVerificationEmailButton email={email} />
+      )}
 
       <div className="flex flex-col gap-2">
         <label htmlFor={emailId} className="text-sm font-medium text-foreground">

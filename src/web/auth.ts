@@ -78,6 +78,28 @@ export const auth = betterAuth({
     // handles both the initial dispatch (sendOnSignUp) and every
     // retry a blocked sign-in attempt triggers.
     requireEmailVerification: true,
+    // Real lockout closed by this callback: re-signing up with an
+    // email that already exists takes Better Auth's own
+    // buildGenericDuplicateResponse path (confirmed directly against
+    // the installed sign-up.mjs) whenever requireEmailVerification is
+    // true - correct for account-enumeration reasons (the response is
+    // indistinguishable from a fresh sign-up), but that path never
+    // re-sends anything on its own. A user who lost/deleted their
+    // original verification email and tried signing up again with
+    // the same address got the same "check your inbox" UI while
+    // nothing new was actually sent - a genuine dead end. This fires
+    // on every re-sign-up attempt for an existing email regardless of
+    // verification state, but auth.api.sendVerificationEmail (called
+    // lazily here, at request time, not at this module's own
+    // construction time - the auth object is fully built by the time
+    // any real request reaches this handler) is itself a no-op for an
+    // already-verified account (confirmed directly against the
+    // installed email-verification.mjs), so this never re-sends to
+    // an account that doesn't need it.
+    onExistingUserSignUp: async ({ user }) => {
+      if (user.emailVerified) return;
+      await auth.api.sendVerificationEmail({ body: { email: user.email } });
+    },
   },
   // Sends the real verification link via the same ACS infrastructure
   // the MFA email-OTP factor already uses (features/auth/mfa/send-

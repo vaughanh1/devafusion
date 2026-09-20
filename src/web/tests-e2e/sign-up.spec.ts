@@ -99,6 +99,105 @@ test.describe("sign-up", () => {
     await expect(page).not.toHaveURL(/\/sign-up/);
   });
 
+  // Regression test for a real, reported lockout: a user who lost or
+  // deleted their original verification email, then signed up again
+  // with the same address, previously got the identical "check your
+  // inbox" message with nothing new actually sent - a genuine dead
+  // end. Proves both halves of the fix together: auth.ts's
+  // onExistingUserSignUp callback (fires on the second sign-up
+  // attempt) and the explicit ResendVerificationEmailButton (fires
+  // on demand) each independently capture a fresh, followable link.
+  test("re-signing up with an existing unverified email, and the explicit resend button, both send a fresh verification link", async ({
+    page,
+  }) => {
+    test.skip(
+      !shouldRunDbTests,
+      "Requires a real Postgres connection (TEST_DB_ACTIONS=true) - no CI sandbox wired up yet.",
+    );
+
+    const email = `lockout-repro-${Date.now()}@example.com`;
+
+    async function submitSignUp() {
+      await page.goto("/sign-up");
+      const submitButton = page.getByRole("button", { name: /create account/i });
+      await page.getByLabel("Name").fill("Ada Lovelace");
+      await page.getByLabel("Email").fill(email);
+      await page.getByLabel("Password", { exact: true }).fill("Correct-Horse-Battery-9!");
+      await expect(submitButton).toBeEnabled({ timeout: 15_000 });
+      await submitButton.click();
+      await expect(page.getByText(/check your inbox at/i)).toBeVisible();
+    }
+
+    // First sign-up - captures the original link and consumes it
+    // from the cache (consumeTestVerificationLink deletes on read),
+    // simulating the email having been "received then lost".
+    await submitSignUp();
+    const firstLinkResponse = await page.request.get(
+      `/api/test-only/verification-link?email=${encodeURIComponent(email)}`,
+    );
+    expect(firstLinkResponse.ok()).toBe(true);
+    const { url: firstUrl } = await firstLinkResponse.json();
+    expect(firstUrl).toBeTruthy();
+
+    // A short wait before the second attempt: Better Auth's
+    // verification token is a JWT signed with a per-SECOND iat claim
+    // (jose's signJWT) - two sign-ups within the same wall-clock
+    // second for the same email would otherwise produce byte-
+    // identical tokens/URLs and make the "must be a genuinely new
+    // link" assertion below flaky, not because the fix is wrong.
+    await page.waitForTimeout(1100);
+
+    // Second sign-up attempt with the SAME email - onExistingUserSignUp
+    // must fire and capture a genuinely new link, not silently no-op.
+    await submitSignUp();
+    const secondLinkResponse = await page.request.get(
+      `/api/test-only/verification-link?email=${encodeURIComponent(email)}`,
+    );
+    expect(secondLinkResponse.ok()).toBe(true);
+    const { url: secondUrl } = await secondLinkResponse.json();
+    expect(secondUrl).toBeTruthy();
+    expect(secondUrl).not.toBe(firstUrl);
+
+    // Following the fresh link genuinely verifies the account -
+    // proves onExistingUserSignUp's resend is a real, followable
+    // link, not just a captured non-empty string.
+    await page.goto(secondUrl);
+    await expect(page).not.toHaveURL(/\/sign-up/);
+
+    // Explicit resend button, called from the sign-up "check your
+    // inbox" screen directly - the second, on-demand half of the
+    // fix. Sign up a fresh, distinct email so this account starts
+    // genuinely unverified again.
+    const resendEmail = `lockout-repro-resend-${Date.now()}@example.com`;
+    await page.goto("/sign-up");
+    await page.getByLabel("Name").fill("Ada Lovelace");
+    await page.getByLabel("Email").fill(resendEmail);
+    await page.getByLabel("Password", { exact: true }).fill("Correct-Horse-Battery-9!");
+    await expect(
+      page.getByRole("button", { name: /create account/i }),
+    ).toBeEnabled({ timeout: 15_000 });
+    await page.getByRole("button", { name: /create account/i }).click();
+    await expect(page.getByText(/check your inbox at/i)).toBeVisible();
+
+    const originalLinkResponse = await page.request.get(
+      `/api/test-only/verification-link?email=${encodeURIComponent(resendEmail)}`,
+    );
+    const { url: originalUrl } = await originalLinkResponse.json();
+
+    await page.getByRole("button", { name: /resend verification email/i }).click();
+    await expect(
+      page.getByText(/if an account needs verifying, a new link has been sent/i),
+    ).toBeVisible();
+
+    const resentLinkResponse = await page.request.get(
+      `/api/test-only/verification-link?email=${encodeURIComponent(resendEmail)}`,
+    );
+    expect(resentLinkResponse.ok()).toBe(true);
+    const { url: resentUrl } = await resentLinkResponse.json();
+    expect(resentUrl).toBeTruthy();
+    expect(resentUrl).not.toBe(originalUrl);
+  });
+
   test("shows the show/hide password toggle and reveals the typed value", async ({
     page,
   }) => {
