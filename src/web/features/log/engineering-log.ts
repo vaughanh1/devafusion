@@ -62,6 +62,7 @@ import { entry as accountNavStuckLoggingOutAfterRelogin } from "./entries/accoun
 import { entry as accessibilityAaaAuditAndExplainerPage } from "./entries/accessibility-aaa-audit-and-explainer-page";
 import { entry as mfaAccountStateConsistency } from "./entries/mfa-account-state-consistency";
 import { entry as techStackPage } from "./entries/tech-stack-page";
+import { entry as mobileAccessibilityPanelOverflowFix } from "./entries/mobile-accessibility-panel-overflow-fix";
 
 export type { LogEntry } from "./types";
 
@@ -134,6 +135,7 @@ const allEntries = [
   accessibilityAaaAuditAndExplainerPage,
   mfaAccountStateConsistency,
   techStackPage,
+  mobileAccessibilityPanelOverflowFix,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>
