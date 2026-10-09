@@ -63,6 +63,7 @@ import { entry as accessibilityAaaAuditAndExplainerPage } from "./entries/access
 import { entry as mfaAccountStateConsistency } from "./entries/mfa-account-state-consistency";
 import { entry as techStackPage } from "./entries/tech-stack-page";
 import { entry as mobileAccessibilityPanelOverflowFix } from "./entries/mobile-accessibility-panel-overflow-fix";
+import { entry as headerReflowAccessibleXlFix } from "./entries/header-reflow-accessible-xl-fix";
 
 export type { LogEntry } from "./types";
 
@@ -136,6 +137,7 @@ const allEntries = [
   mfaAccountStateConsistency,
   techStackPage,
   mobileAccessibilityPanelOverflowFix,
+  headerReflowAccessibleXlFix,
 ];
 
 export const engineeringLog = [...allEntries].sort((a, b) =>

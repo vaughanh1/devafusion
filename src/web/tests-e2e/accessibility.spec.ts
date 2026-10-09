@@ -155,3 +155,51 @@ test.describe("touch target size @a11y", () => {
     expect(probeBox!.height).toBeGreaterThanOrEqual(44);
   });
 });
+
+// WCAG 2.2 SC 1.4.10 (Reflow, AA): content must not require
+// two-dimensional scrolling at a narrow viewport. Neither axe-core
+// nor Lighthouse has a rule that catches this - confirmed directly
+// against axe-core's rule list and Lighthouse's audit catalogue,
+// same reasoning this file's own touch-target-size tests already
+// apply to SC 2.5.5. Found live: the header's brand wordmark + Menu +
+// Log in flex row had no flex-wrap, so growing the root font-size via
+// the Accessible XL text-size opt-up (globals.css's
+// html[data-a11y-scale="accessible-xl"], 125%) pushed the row's
+// combined width past a narrow mobile viewport, forcing horizontal
+// scroll and squashing the Log in button's own text onto two lines.
+// Asserted here via a real scrollWidth vs clientWidth measurement
+// at a representative narrow mobile viewport width (iPhone SE/small
+// Android class, 375px), not delegated to any automated a11y tool.
+test.describe("header reflow at Accessible XL text size @a11y", () => {
+  test("the header never forces horizontal scroll on a narrow mobile viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/");
+
+    await page.evaluate(() => {
+      document.documentElement.setAttribute("data-a11y-scale", "accessible-xl");
+    });
+
+    const scrollWidth = await page.evaluate(
+      () => document.documentElement.scrollWidth,
+    );
+    const clientWidth = await page.evaluate(
+      () => document.documentElement.clientWidth,
+    );
+    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+
+    // The regression this guards against specifically: a header
+    // control's own text must never wrap mid-word - whitespace-nowrap
+    // on it should mean the header row (which now carries flex-wrap)
+    // breaks onto a new line instead. Asserted against the mobile
+    // "Menu" toggle rather than AccountNav's "Log in" link, since
+    // AccountNav resolves its session client-side (authClient.useSession)
+    // and stays in its loading placeholder state indefinitely in any
+    // environment with no reachable database - MainNavigation's
+    // button has no such dependency and is present unconditionally.
+    const menuButton = page.getByRole("button", { name: "Menu" });
+    const menuBox = await menuButton.boundingBox();
+    expect(menuBox!.height).toBeLessThan(menuBox!.width);
+  });
+});
