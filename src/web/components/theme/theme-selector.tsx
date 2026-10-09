@@ -166,9 +166,18 @@ export function ThemeSelector() {
 
       <div
         id="a11y-panel"
-        className={`${isOpen ? "flex" : "hidden"} absolute right-0 bottom-full z-10 mb-2 w-max flex-col gap-3 border border-surface-border bg-surface p-3 shadow-lg`}
+        // w-max previously let this panel grow to fit every button
+        // unwrapped in one row - fine on desktop, but on a narrow
+        // mobile viewport (anchored right-0 against the footer
+        // trigger) it overflowed off both edges of the screen with
+        // no way to scroll it back into view. Capped to the
+        // viewport width (minus the footer's own side padding) with
+        // a sane desktop ceiling, plus max-h/overflow-y-auto as a
+        // safety net if the stacked content is still taller than a
+        // short mobile viewport.
+        className={`${isOpen ? "flex" : "hidden"} absolute right-0 bottom-full z-10 mb-2 w-[calc(100vw-2rem)] max-w-sm max-h-[70vh] flex-col gap-3 overflow-y-auto border border-surface-border bg-surface p-3 shadow-lg`}
       >
-      <fieldset className="flex items-center gap-2">
+      <fieldset className="flex flex-wrap items-center gap-2">
         <legend className="sr-only">Colour theme</legend>
         {THEME_OPTIONS.map((option) => (
           <button
@@ -195,7 +204,7 @@ export function ThemeSelector() {
         </button>
       </fieldset>
 
-      <fieldset className="flex items-center gap-2">
+      <fieldset className="flex flex-wrap items-center gap-2">
         <legend className="sr-only">Text size</legend>
         {SCALE_OPTIONS.map((option) => (
           <button
@@ -224,7 +233,7 @@ export function ThemeSelector() {
           AAA enlarges buttons and links only — colour and text size are
           set separately, above.
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
         {TARGET_OPTIONS.map((option) => (
           <button
             key={option.value}
