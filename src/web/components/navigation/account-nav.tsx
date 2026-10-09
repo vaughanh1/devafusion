@@ -51,7 +51,13 @@ export function AccountNav() {
     return (
       <Link
         href={`/log-in${query}`}
-        className="inline-flex min-h-[var(--touch-target-size)] items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        // whitespace-nowrap: without it, a growing font-size (the
+        // Accessible XL text-size opt-up) could wrap this label
+        // mid-word ("Log" / "in") inside its own border before the
+        // header row's own flex-wrap (site-header.tsx) gets a chance
+        // to move it to a new line - this button's own text should
+        // never be the thing that breaks, only the row layout around it.
+        className="inline-flex min-h-[var(--touch-target-size)] items-center whitespace-nowrap border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
       >
         Log in
       </Link>
@@ -69,7 +75,7 @@ export function AccountNav() {
     <div className="flex items-center gap-2">
       <Link
         href="/account"
-        className="inline-flex min-h-[var(--touch-target-size)] items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+        className="inline-flex min-h-[var(--touch-target-size)] items-center whitespace-nowrap border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
       >
         Account
       </Link>
@@ -77,7 +83,7 @@ export function AccountNav() {
         type="button"
         disabled={isLoggingOut}
         onClick={handleLogOut}
-        className="inline-flex min-h-[var(--touch-target-size)] cursor-pointer items-center border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex min-h-[var(--touch-target-size)] cursor-pointer items-center whitespace-nowrap border border-surface-border px-3 text-sm font-medium text-muted transition-colors hover:border-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isLoggingOut ? "Logging out…" : "Log out"}
       </button>
